@@ -1,46 +1,75 @@
 import Foundation
-import SwiftData
 
-// 1つの項目について、今月いくら使ったかをまとめたものです。
-struct CategorySummary: Identifiable {
-    let category: BudgetCategory
+// 今月の家計簿の集計です。ホーム画面で使います。
+// 「目標」はメンバー全員の目標金額の合計、「使った額」は支出の合計です。
+// 人ごとの「使った額」は、支出のうちその人が負担する分（配分）の合計です。
+
+/// 1人ぶんの、今月の目標と使った額
+struct MemberSummary: Identifiable {
+    let member: Member
+    let target: Int
     let spent: Int
 
-    var id: PersistentIdentifier { category.persistentModelID }
+    var id: UUID { member.userId }
+    var name: String { member.displayName }
+    /// 目標からの差分（マイナスなら目標オーバー）
+    var difference: Int { target - spent }
+}
+
+/// 1つの項目の、今月の目標と使った額
+struct CategorySummary: Identifiable {
+    let category: BudgetCategory
+    let target: Int
+    let spent: Int
+    /// その項目の、人ごとの目標と使った額
+    let members: [MemberSummary]
+
+    var id: UUID { category.id }
     var name: String { category.name }
-    var target: Int { category.monthlyTarget }
     /// 残り（マイナスなら目標オーバー）
     var remaining: Int { target - spent }
     var isOver: Bool { spent > target }
 }
 
-// 今月の家計簿の集計です。ホーム画面で使います。
 struct MonthlySummary {
     let categories: [CategorySummary]
+    let members: [MemberSummary]
     /// 項目なしの支出の合計
     let uncategorizedSpent: Int
 
-    /// - Parameters:
-    ///   - categories: 項目（表示したい順に並べたもの）
-    ///   - expenses: 今月の支出だけ
-    init(categories: [BudgetCategory], expenses: [Expense]) {
-        var spentByCategory: [PersistentIdentifier: Int] = [:]
-        var uncategorized = 0
-        for expense in expenses {
-            if let category = expense.category {
-                spentByCategory[category.persistentModelID, default: 0] += expense.amount
-            } else {
-                uncategorized += expense.amount
-            }
-        }
+    @MainActor
+    init(store: BudgetStore) {
+        let expenses = store.expenses
 
-        self.categories = categories.map { category in
-            CategorySummary(
+        categories = store.categories.map { category in
+            let inCategory = expenses.filter { $0.categoryId == category.id }
+            let memberSummaries = store.members.map { member in
+                MemberSummary(
+                    member: member,
+                    target: store.target(categoryId: category.id, userId: member.userId),
+                    spent: inCategory.reduce(0) { $0 + $1.share(of: member.userId) }
+                )
+            }
+            return CategorySummary(
                 category: category,
-                spent: spentByCategory[category.persistentModelID] ?? 0
+                target: memberSummaries.reduce(0) { $0 + $1.target },
+                spent: inCategory.reduce(0) { $0 + $1.amount },
+                members: memberSummaries
             )
         }
-        self.uncategorizedSpent = uncategorized
+
+        let categoryIds = Set(store.categories.map(\.id))
+        uncategorizedSpent = expenses
+            .filter { expense in expense.categoryId.map { !categoryIds.contains($0) } ?? true }
+            .reduce(0) { $0 + $1.amount }
+
+        members = store.members.map { member in
+            MemberSummary(
+                member: member,
+                target: store.categories.reduce(0) { $0 + store.target(categoryId: $1.id, userId: member.userId) },
+                spent: expenses.reduce(0) { $0 + $1.share(of: member.userId) }
+            )
+        }
     }
 
     var totalTarget: Int {

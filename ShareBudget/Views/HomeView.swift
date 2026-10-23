@@ -1,20 +1,12 @@
-import SwiftData
 import SwiftUI
 
-// 今月の項目ごとの「目標・使った額・残り」と、このままいけば貯まる旅行資金を表示する画面です。
+// 今月の家計簿の様子を表示する画面です。
+// 家計簿全体、メンバーごと、項目ごとに「目標・使った額・目標との差」を出します。
 struct HomeView: View {
-    @Query(sort: \BudgetCategory.sortOrder) private var categories: [BudgetCategory]
-    @Query private var allExpenses: [Expense]
-
-    private var currentSummary: MonthlySummary {
-        MonthlySummary(
-            categories: categories,
-            expenses: allExpenses.filter { $0.date.isInCurrentMonth }
-        )
-    }
+    @Environment(BudgetStore.self) private var store
 
     var body: some View {
-        let summary = currentSummary
+        let summary = MonthlySummary(store: store)
 
         NavigationStack {
             List {
@@ -22,9 +14,21 @@ struct HomeView: View {
                     MonthOverview(summary: summary)
                 }
 
+                if store.members.count > 1 {
+                    Section {
+                        ForEach(summary.members) { member in
+                            MemberRow(member: member)
+                        }
+                    } header: {
+                        Text("メンバーごと")
+                    } footer: {
+                        Text("使った額は、支出のうちその人が負担する分（配分）の合計です。")
+                    }
+                }
+
                 Section("項目ごと") {
                     ForEach(summary.categories) { item in
-                        CategoryProgressRow(item: item)
+                        CategoryProgressRow(item: item, showsMembers: store.members.count > 1)
                     }
                     if summary.uncategorizedSpent > 0 {
                         HStack {
@@ -45,6 +49,10 @@ struct HomeView: View {
                 }
             }
             .navigationTitle(Date().formatted(.dateTime.month(.wide)) + "の家計簿")
+            // 下に引っぱると、ルームメイトが入力した支出も読み込み直します。
+            .refreshable {
+                await store.reload()
+            }
         }
     }
 }
@@ -97,9 +105,44 @@ private struct LabeledValue: View {
     }
 }
 
-// 項目1つぶんの行です。使った割合をバーで表示します。
+// メンバー1人ぶんの、今月の目標・使った額・目標との差です。
+private struct MemberRow: View {
+    let member: MemberSummary
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Text(member.name)
+                    .font(.headline)
+                Spacer()
+                DifferenceText(difference: member.difference)
+            }
+            Text("使った額 \(member.spent.yenText) ／ 目標 \(member.target.yenText)")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .padding(.vertical, 2)
+    }
+}
+
+// 目標との差を「残り 〇円」または「〇円オーバー」と表示します。
+private struct DifferenceText: View {
+    let difference: Int
+
+    var body: some View {
+        if difference >= 0 {
+            Text("残り \(difference.yenText)")
+        } else {
+            Text("\((-difference).yenText)オーバー")
+                .foregroundStyle(.red)
+        }
+    }
+}
+
+// 項目1つぶんの行です。使った割合をバーで表示し、その下に人ごとの内訳を出します。
 private struct CategoryProgressRow: View {
     let item: CategorySummary
+    let showsMembers: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -107,12 +150,7 @@ private struct CategoryProgressRow: View {
                 Text(item.name)
                     .font(.headline)
                 Spacer()
-                if item.isOver {
-                    Text("\((-item.remaining).yenText)オーバー")
-                        .foregroundStyle(.red)
-                } else {
-                    Text("残り \(item.remaining.yenText)")
-                }
+                DifferenceText(difference: item.remaining)
             }
 
             // バーの長さ = 使った額 ÷ 目標金額（目標を超えたら満タン）
@@ -125,6 +163,18 @@ private struct CategoryProgressRow: View {
             Text("使った額 \(item.spent.yenText) ／ 目標 \(item.target.yenText)")
                 .font(.caption)
                 .foregroundStyle(.secondary)
+
+            if showsMembers {
+                ForEach(item.members) { member in
+                    HStack {
+                        Text("・\(member.name)：\(member.spent.yenText) ／ \(member.target.yenText)")
+                        Spacer()
+                        DifferenceText(difference: member.difference)
+                    }
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                }
+            }
         }
         .padding(.vertical, 2)
     }
@@ -132,5 +182,5 @@ private struct CategoryProgressRow: View {
 
 #Preview {
     HomeView()
-        .modelContainer(PreviewData.container)
+        .environment(PreviewData.store)
 }
