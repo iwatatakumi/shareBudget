@@ -75,6 +75,7 @@ struct CategoryEditView: View {
                 BudgetCategory(name: trimmedName, monthlyTarget: target, sortOrder: nextSortOrder)
             )
         }
+        modelContext.saveChanges()
         dismiss()
     }
 }

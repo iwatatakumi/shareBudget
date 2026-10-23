@@ -36,5 +36,6 @@ extension BudgetCategory {
         for (index, name) in defaultNames.enumerated() {
             context.insert(BudgetCategory(name: name, sortOrder: index))
         }
+        context.saveChanges()
     }
 }
