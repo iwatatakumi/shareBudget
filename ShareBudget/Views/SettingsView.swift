@@ -65,6 +65,7 @@ struct SettingsView: View {
             ) { category in
                 Button("「\(category.name)」を削除", role: .destructive) {
                     modelContext.delete(category)
+                    modelContext.saveChanges()
                     categoryToDelete = nil
                 }
             } message: { _ in
@@ -80,6 +81,7 @@ struct SettingsView: View {
         for (index, category) in reordered.enumerated() {
             category.sortOrder = index
         }
+        modelContext.saveChanges()
     }
 }
 

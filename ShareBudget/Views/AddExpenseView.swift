@@ -61,6 +61,7 @@ struct AddExpenseView: View {
             category: category
         )
         modelContext.insert(expense)
+        modelContext.saveChanges()
 
         // 次の入力のために欄を空に戻します（項目はそのまま残します）。
         amountText = ""

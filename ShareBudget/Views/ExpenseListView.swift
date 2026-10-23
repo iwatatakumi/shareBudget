@@ -60,6 +60,7 @@ struct ExpenseListView: View {
         for index in offsets {
             modelContext.delete(expenses[index])
         }
+        modelContext.saveChanges()
     }
 }
 

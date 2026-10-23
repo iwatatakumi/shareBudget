@@ -62,6 +62,7 @@ struct EditExpenseView: View {
         ) {
             Button("削除する", role: .destructive) {
                 modelContext.delete(expense)
+                modelContext.saveChanges()
                 dismiss()
             }
         }
@@ -73,6 +74,7 @@ struct EditExpenseView: View {
         expense.category = category
         expense.date = date
         expense.memo = memo.trimmingCharacters(in: .whitespaces)
+        modelContext.saveChanges()
         dismiss()
     }
 }
