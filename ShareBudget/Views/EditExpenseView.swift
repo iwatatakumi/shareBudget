@@ -24,7 +24,7 @@ struct EditExpenseView: View {
         _memo = State(initialValue: expense.memo)
     }
 
-    private var amount: Int? { ExpenseInput.amount(from: amountText) }
+    private var amount: Int? { AmountInput.amount(from: amountText) }
     private var canSave: Bool { amount != nil && category != nil }
 
     var body: some View {

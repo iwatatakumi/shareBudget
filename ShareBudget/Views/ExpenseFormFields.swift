@@ -36,13 +36,3 @@ struct ExpenseFormFields: View {
         }
     }
 }
-
-enum ExpenseInput {
-    /// 入力された文字を金額に変えます。1円以上の数字でなければ nil（からっぽ）を返します。
-    static func amount(from text: String) -> Int? {
-        let digits = text.replacingOccurrences(of: ",", with: "")
-            .trimmingCharacters(in: .whitespaces)
-        guard let value = Int(digits), value > 0 else { return nil }
-        return value
-    }
-}
