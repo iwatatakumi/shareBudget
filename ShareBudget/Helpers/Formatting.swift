@@ -5,6 +5,14 @@ extension Int {
     var yenText: String {
         formatted(.number) + "円"
     }
+
+    /// 金額を「+3,500円」「−2,000円」のように、プラス・マイナスの記号付きの文字にします。
+    var signedYenText: String {
+        if self < 0 {
+            return "−" + (-self).yenText
+        }
+        return "+" + yenText
+    }
 }
 
 extension Date {
