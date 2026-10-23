@@ -57,8 +57,8 @@ struct MonthlySummary {
     }
 
     /// このままいけば今月貯まる旅行資金。
-    /// 各項目の「目標 − 使った額」の合計で、マイナスの月は0円にします。
+    /// 各項目の「目標 − 使った額」の合計で、目標を超えた月はマイナスになります。
     var projectedTravelFund: Int {
-        max(0, totalRemaining)
+        totalRemaining
     }
 }

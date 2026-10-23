@@ -71,12 +71,12 @@ private struct MonthOverview: View {
             }
 
             Label {
-                Text("このままいけば旅行資金 +\(summary.projectedTravelFund.yenText)")
+                Text("このままいけば旅行資金 \(summary.projectedTravelFund.signedYenText)")
             } icon: {
                 Image(systemName: "airplane")
             }
             .font(.callout.bold())
-            .foregroundStyle(Color.accentColor)
+            .foregroundStyle(summary.projectedTravelFund >= 0 ? Color.accentColor : Color.red)
         }
         .padding(.vertical, 4)
     }
