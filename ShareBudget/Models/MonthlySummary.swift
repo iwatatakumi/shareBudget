@@ -115,9 +115,9 @@ struct MonthlySummary {
         daily.perDay(totalTarget)
     }
 
-    /// 今日までに使ってよい金額
+    /// 今日までに使ってよい金額（項目ごとに日割りした額の合計）
     var targetUntilToday: Int {
-        daily.untilToday(totalTarget)
+        categories.reduce(0) { $0 + daily.untilToday($1.target) }
     }
 
     /// 今月の残り（マイナスなら目標オーバー）
@@ -125,9 +125,10 @@ struct MonthlySummary {
         totalTarget - totalSpent
     }
 
-    /// このままいけば今月貯まる旅行資金。
-    /// 各項目の「目標 − 使った額」の合計で、目標を超えた月はマイナスになります。
+    /// 今日までの旅行資金。
+    /// 各項目の「今日までの目標 − 使った額」の合計から、項目なしの支出を引いた額です。
+    /// 目標より多く使っているとマイナスになります。
     var projectedTravelFund: Int {
-        totalRemaining
+        targetUntilToday - totalSpent
     }
 }

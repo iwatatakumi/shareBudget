@@ -87,7 +87,7 @@ private struct MonthOverview: View {
             }
 
             Label {
-                Text("このままいけば旅行資金 \(summary.projectedTravelFund.signedYenText)")
+                Text("今日までの旅行資金 \(summary.projectedTravelFund.signedYenText)")
             } icon: {
                 Image(systemName: "airplane")
             }
@@ -119,7 +119,7 @@ private struct DailyOverview: View {
             HStack {
                 Text("今日（\(summary.daily.today)日）までの目標 \(summary.targetUntilToday.yenText)")
                 Spacer()
-                DifferenceText(difference: summary.targetUntilToday - summary.totalSpent)
+                DifferenceText(difference: summary.projectedTravelFund)
             }
             .font(.caption)
         }
