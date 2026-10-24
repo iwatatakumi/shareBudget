@@ -73,6 +73,13 @@ create table if not exists public.expense_shares (
   primary key (expense_id, user_id)
 );
 
+-- 旅行先の候補（AIが探した結果を、家計簿ごとに1つ保存します）
+create table if not exists public.travel_suggestions (
+  household_id uuid primary key references public.households(id) on delete cascade,
+  ideas jsonb not null,
+  created_at timestamptz not null default now()
+);
+
 create index if not exists expenses_household_spent_on on public.expenses (household_id, spent_on);
 
 -- ========== 自分の家計簿を調べる関数 ==========
@@ -92,6 +99,7 @@ alter table public.categories enable row level security;
 alter table public.member_targets enable row level security;
 alter table public.expenses enable row level security;
 alter table public.expense_shares enable row level security;
+alter table public.travel_suggestions enable row level security;
 -- household_secrets は「読み書きしてよい条件」を1つも作らないので、アプリからは見えません。
 alter table public.household_secrets enable row level security;
 
@@ -124,6 +132,11 @@ create policy "own expenses" on public.expenses
 
 drop policy if exists "own shares" on public.expense_shares;
 create policy "own shares" on public.expense_shares
+  for all using (household_id = public.my_household_id())
+  with check (household_id = public.my_household_id());
+
+drop policy if exists "own travel suggestions" on public.travel_suggestions;
+create policy "own travel suggestions" on public.travel_suggestions
   for all using (household_id = public.my_household_id())
   with check (household_id = public.my_household_id());
 
@@ -293,7 +306,21 @@ begin
 end;
 $$;
 
+-- ========== 月ごとの支出の合計（旅行資金の記録に使います） ==========
+
+create or replace function public.monthly_spent()
+returns table (month text, total bigint)
+language sql stable security invoker set search_path = public
+as $$
+  select to_char(spent_on, 'YYYY-MM') as month, sum(amount) as total
+  from public.expenses
+  where household_id = public.my_household_id()
+  group by 1
+  order by 1
+$$;
+
 grant execute on function public.create_household(text, text) to authenticated;
+grant execute on function public.monthly_spent() to authenticated;
 grant execute on function public.join_household(text, text, text) to authenticated;
 grant execute on function public.change_household_password(text) to authenticated;
 grant execute on function public.save_expense(uuid, uuid, int, date, text, jsonb) to authenticated;

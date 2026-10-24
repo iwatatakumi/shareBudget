@@ -15,7 +15,8 @@
 - 「ホーム」でメンバーごと・項目ごとの「使った額 ／ 目標 ／ 目標との差」を見る
 - 月の目標金額をその月の日数で日割りした「1日あたりの目標」と、今日・今日までの使った額との差を見る
 - データはSupabase（PostgreSQL）に保存され、2人で共有されます
-- 旅行資金の画面はまだ準備中です
+- 「旅行資金」タブで、家計簿を作った月からの旅行資金の合計と月ごとの記録を見る（マイナスの月は合計から引きます）
+- 「旅行資金」タブで、AI（Claude）がネットで調べた旅行先・ルート・費用の目安と、あといくら貯めれば行けるかを見る
 
 ## Macで動かす方法
 
@@ -35,6 +36,21 @@
 3. 「SQL Editor」を開き、このリポジトリの `supabase/schema.sql` の中身をすべて貼り付けて「Run」を押します。
 4. 「Project Settings」→「API Keys」の Project URL と publishable key（または anon public キー）を、
    `ShareBudget/Supabase/SupabaseConfig.swift` に書きます。
+
+## AIで旅行先を探す準備（使いたいときだけ）
+
+「AIで旅行先を探す」ボタンは、Supabaseの Edge Function（サーバーで動く小さなプログラム）から
+Anthropic の Claude API を呼び出します。準備をしなくても、アプリに入っている参考の候補は表示されます。
+
+1. [console.anthropic.com](https://console.anthropic.com) でアカウントを作り、「Billing」でクレジットを購入します（使った分だけの料金です）。
+2. 「API Keys」→「Create Key」でAPIキー（`sk-ant-` で始まる文字）を作ってコピーします。
+   **このキーはアプリのコードやGitHubには絶対に書かないでください。** 他の人に知られると、あなたの料金で使われてしまいます。
+3. Supabaseの「Edge Functions」→「Secrets」で、Name に `ANTHROPIC_API_KEY`、Value にコピーしたキーを入れて保存します。
+4. 「Edge Functions」→「Deploy a new function」→「Via Editor」を選び、名前を `travel-ideas` にします。
+   このリポジトリの `supabase/functions/travel-ideas/index.ts` の中身をすべて貼り付けて「Deploy」を押します。
+5. 「SQL Editor」で `supabase/schema.sql` をもう一度実行します（候補を保存する場所が追加されます）。
+
+料金を抑えるため、同じ家計簿では1時間に1回だけAIに問い合わせ、それ以外は前回の結果を表示します。
 
 ## 使っている技術
 
