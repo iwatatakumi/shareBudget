@@ -1,33 +1,42 @@
-import SwiftData
 import SwiftUI
 
-// 項目の名前と目標金額を決める画面です。追加と編集の両方で使います。
+// 項目の名前と、人ごとの目標金額を決める画面です。追加と編集の両方で使います。
 struct CategoryEditView: View {
-    @Environment(\.modelContext) private var modelContext
+    @Environment(BudgetStore.self) private var store
     @Environment(\.dismiss) private var dismiss
 
     /// 編集する項目。nil のときは新しく追加します。
     let category: BudgetCategory?
-    /// 新しく追加するときの並び順
-    let nextSortOrder: Int
 
     @State private var name: String
-    @State private var targetText: String
+    /// 人ごとの目標金額の入力欄
+    @State private var targetTexts: [UUID: String] = [:]
+    @State private var didLoad = false
+    @State private var isSaving = false
     @FocusState private var focused: Bool
 
-    init(category: BudgetCategory?, nextSortOrder: Int = 0) {
+    init(category: BudgetCategory?) {
         self.category = category
-        self.nextSortOrder = nextSortOrder
         _name = State(initialValue: category?.name ?? "")
-        let target = category?.monthlyTarget ?? 0
-        _targetText = State(initialValue: target > 0 ? String(target) : "")
     }
 
     private var trimmedName: String {
         name.trimmingCharacters(in: .whitespaces)
     }
-    private var target: Int? { AmountInput.target(from: targetText) }
-    private var canSave: Bool { !trimmedName.isEmpty && target != nil }
+
+    /// 人ごとの目標金額。正しくない入力があれば nil
+    private var targets: [UUID: Int]? {
+        var result: [UUID: Int] = [:]
+        for member in store.members {
+            guard let value = AmountInput.target(from: targetTexts[member.userId] ?? "") else { return nil }
+            result[member.userId] = value
+        }
+        return result
+    }
+
+    private var canSave: Bool {
+        !trimmedName.isEmpty && targets != nil && !isSaving
+    }
 
     var body: some View {
         Form {
@@ -37,15 +46,26 @@ struct CategoryEditView: View {
             }
 
             Section {
+                ForEach(store.members) { member in
+                    HStack {
+                        Text(member.displayName)
+                        Spacer()
+                        TextField("0", text: targetBinding(for: member.userId))
+                            .keyboardType(.numberPad)
+                            .focused($focused)
+                            .multilineTextAlignment(.trailing)
+                            .frame(maxWidth: 140)
+                        Text("円")
+                    }
+                }
                 HStack {
-                    TextField("0", text: $targetText)
-                        .keyboardType(.numberPad)
-                        .focused($focused)
-                        .font(.title2)
-                    Text("円")
+                    Text("合計")
+                    Spacer()
+                    Text(((targets ?? [:]).values.reduce(0, +)).yenText)
+                        .bold()
                 }
             } header: {
-                Text("1か月の目標金額")
+                Text("1か月の目標金額（人ごと）")
             } footer: {
                 Text("この金額より使わずに済んだ分が、旅行資金になります。")
             }
@@ -54,28 +74,50 @@ struct CategoryEditView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
-                Button("保存") { save() }
-                    .disabled(!canSave)
+                Button("保存") {
+                    Task { await save() }
+                }
+                .disabled(!canSave)
             }
             ToolbarItemGroup(placement: .keyboard) {
                 Spacer()
                 Button("完了") { focused = false }
             }
         }
+        .onAppear(perform: loadTargets)
     }
 
-    private func save() {
-        guard let target else { return }
+    private func targetBinding(for userId: UUID) -> Binding<String> {
+        Binding(
+            get: { targetTexts[userId] ?? "" },
+            set: { targetTexts[userId] = $0 }
+        )
+    }
 
-        if let category {
-            category.name = trimmedName
-            category.monthlyTarget = target
-        } else {
-            modelContext.insert(
-                BudgetCategory(name: trimmedName, monthlyTarget: target, sortOrder: nextSortOrder)
-            )
+    // 画面を開いたときに、いまの目標金額を入力欄に入れます。
+    private func loadTargets() {
+        guard !didLoad else { return }
+        didLoad = true
+        guard let category else { return }
+        for member in store.members {
+            let amount = store.target(categoryId: category.id, userId: member.userId)
+            targetTexts[member.userId] = amount > 0 ? String(amount) : ""
         }
-        modelContext.saveChanges()
-        dismiss()
     }
+
+    private func save() async {
+        guard let targets else { return }
+        isSaving = true
+        defer { isSaving = false }
+        if await store.saveCategory(category, name: trimmedName, targetsByUser: targets) {
+            dismiss()
+        }
+    }
+}
+
+#Preview {
+    NavigationStack {
+        CategoryEditView(category: PreviewData.store.categories.first)
+    }
+    .environment(PreviewData.store)
 }
