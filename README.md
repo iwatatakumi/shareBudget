@@ -10,7 +10,7 @@
 - 「一覧」タブで今月の支出と合計を見る。行を押すと修正、左にスワイプすると削除
 - 「設定」タブで項目の追加・名前の変更・削除・並び替えと、1か月の目標金額の設定
 - 「ホーム」タブで今月の残り、項目ごとの使った割合、このままいけば貯まる旅行資金を見る
-- メールアドレスで登録・ログインし、招待コードでルームメイトと同じ家計簿を使う
+- メールアドレスは不要。家計簿を作った人（管理者）が決めたパスワードと家計簿IDを教えて、ルームメイトと同じ家計簿を使う
 - 支出ごとの配分（均等・自分だけ・金額を指定）と、人ごと・項目ごとの目標金額
 - 「ホーム」でメンバーごと・項目ごとの「使った額 ／ 目標 ／ 目標との差」を見る
 - データはSupabase（PostgreSQL）に保存され、2人で共有されます
@@ -29,7 +29,8 @@
 ## Supabaseの準備（最初に1回だけ）
 
 1. [supabase.com](https://supabase.com) でプロジェクトを作ります（Region: Northeast Asia (Tokyo)、プラン: Free）。
-2. 「Authentication」→「Sign In / Providers」→「Email」で「Confirm email」をオフにします。
+2. 「Authentication」→「Sign In / Providers」で「Allow anonymous sign-ins」をオンにして「Save changes」を押します。
+   （メールアドレスなしで、端末ごとに名前のない利用者を自動で作る設定です）
 3. 「SQL Editor」を開き、このリポジトリの `supabase/schema.sql` の中身をすべて貼り付けて「Run」を押します。
 4. 「Project Settings」→「API Keys」の Project URL と publishable key（または anon public キー）を、
    `ShareBudget/Supabase/SupabaseConfig.swift` に書きます。

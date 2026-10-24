@@ -2,6 +2,9 @@
 -- Supabaseの管理画面の「SQL Editor」にこのファイルの中身をすべて貼り付けて「Run」を押してください。
 -- 何度実行しても同じ状態になるように書いてあります。
 
+-- パスワードを安全に保存するための道具（pgcrypto）。Supabaseでは最初から入っています。
+create extension if not exists pgcrypto with schema extensions;
+
 -- ========== テーブル ==========
 
 -- 家計簿（ルームメイトと共有する単位）
@@ -10,6 +13,17 @@ create table if not exists public.households (
   name text not null default '家計簿',
   invite_code text not null unique default upper(substr(md5(random()::text), 1, 6)),
   created_at timestamptz not null default now()
+);
+
+-- 家計簿を作った人（管理者）。参加用パスワードを変えられるのはこの人だけです。
+alter table public.households
+  add column if not exists owner_id uuid references auth.users(id) on delete set null;
+
+-- 参加用パスワード（そのままではなく、元に戻せない形に変換して保存します）
+-- 権限の設定で、アプリからは誰も直接読めないようにしています。
+create table if not exists public.household_secrets (
+  household_id uuid primary key references public.households(id) on delete cascade,
+  password_hash text not null
 );
 
 -- 家計簿のメンバー（1人は1つの家計簿にだけ入れます）
@@ -78,6 +92,8 @@ alter table public.categories enable row level security;
 alter table public.member_targets enable row level security;
 alter table public.expenses enable row level security;
 alter table public.expense_shares enable row level security;
+-- household_secrets は「読み書きしてよい条件」を1つも作らないので、アプリからは見えません。
+alter table public.household_secrets enable row level security;
 
 drop policy if exists "own household" on public.households;
 create policy "own household" on public.households
@@ -113,8 +129,24 @@ create policy "own shares" on public.expense_shares
 
 -- ========== 家計簿を作る・参加する ==========
 
--- 新しい家計簿を作り、最初の項目を用意します。
-create or replace function public.create_household(p_display_name text)
+-- 古い形の関数（パスワードなし）を消します。
+drop function if exists public.create_household(text);
+drop function if exists public.join_household(text, text);
+
+-- 参加用パスワードの長さを確かめます。
+create or replace function public.check_household_password(p_password text)
+returns void
+language plpgsql immutable
+as $$
+begin
+  if p_password is null or length(p_password) < 4 then
+    raise exception 'パスワードは4文字以上にしてください';
+  end if;
+end;
+$$;
+
+-- 新しい家計簿を作り、最初の項目を用意します。作った人が管理者になります。
+create or replace function public.create_household(p_display_name text, p_password text)
 returns public.households
 language plpgsql security definer set search_path = public
 as $$
@@ -122,13 +154,16 @@ declare
   h public.households;
 begin
   if auth.uid() is null then
-    raise exception 'ログインしてください';
+    raise exception 'アプリを開き直してください';
   end if;
   if exists (select 1 from public.members where user_id = auth.uid()) then
     raise exception 'すでに家計簿に参加しています';
   end if;
+  perform public.check_household_password(p_password);
 
-  insert into public.households default values returning * into h;
+  insert into public.households (owner_id) values (auth.uid()) returning * into h;
+  insert into public.household_secrets (household_id, password_hash)
+    values (h.id, extensions.crypt(p_password, extensions.gen_salt('bf')));
   insert into public.members (household_id, user_id, display_name)
     values (h.id, auth.uid(), p_display_name);
   insert into public.categories (household_id, name, sort_order)
@@ -139,29 +174,59 @@ begin
 end;
 $$;
 
--- 招待コードで、ルームメイトの家計簿に参加します。
-create or replace function public.join_household(p_invite_code text, p_display_name text)
+-- 家計簿ID（招待コード）とパスワードで、ルームメイトの家計簿に参加します。
+create or replace function public.join_household(p_invite_code text, p_password text, p_display_name text)
 returns public.households
 language plpgsql security definer set search_path = public
 as $$
 declare
   h public.households;
+  saved_hash text;
 begin
   if auth.uid() is null then
-    raise exception 'ログインしてください';
+    raise exception 'アプリを開き直してください';
   end if;
   if exists (select 1 from public.members where user_id = auth.uid()) then
     raise exception 'すでに家計簿に参加しています';
   end if;
 
   select * into h from public.households where invite_code = upper(trim(p_invite_code));
-  if h.id is null then
-    raise exception '招待コードが見つかりません';
+  select password_hash into saved_hash from public.household_secrets where household_id = h.id;
+  -- どちらが違うかは教えない（当てずっぽうで試されにくくするため）
+  if h.id is null or saved_hash is null
+     or extensions.crypt(coalesce(p_password, ''), saved_hash) <> saved_hash then
+    raise exception '家計簿IDかパスワードが違います';
   end if;
 
   insert into public.members (household_id, user_id, display_name)
     values (h.id, auth.uid(), p_display_name);
   return h;
+end;
+$$;
+
+-- 管理者が参加用パスワードを変えます。
+-- 管理者が決まっていない古い家計簿では、最初に変えたメンバーが管理者になります。
+create or replace function public.change_household_password(p_password text)
+returns void
+language plpgsql security definer set search_path = public
+as $$
+declare
+  hid uuid := public.my_household_id();
+  owner uuid;
+begin
+  if hid is null then
+    raise exception '家計簿に参加していません';
+  end if;
+  select owner_id into owner from public.households where id = hid;
+  if owner is not null and owner <> auth.uid() then
+    raise exception 'パスワードを変えられるのは、家計簿を作った人だけです';
+  end if;
+  perform public.check_household_password(p_password);
+
+  update public.households set owner_id = auth.uid() where id = hid;
+  insert into public.household_secrets (household_id, password_hash)
+    values (hid, extensions.crypt(p_password, extensions.gen_salt('bf')))
+    on conflict (household_id) do update set password_hash = excluded.password_hash;
 end;
 $$;
 
@@ -228,6 +293,7 @@ begin
 end;
 $$;
 
-grant execute on function public.create_household(text) to authenticated;
-grant execute on function public.join_household(text, text) to authenticated;
+grant execute on function public.create_household(text, text) to authenticated;
+grant execute on function public.join_household(text, text, text) to authenticated;
+grant execute on function public.change_household_password(text) to authenticated;
 grant execute on function public.save_expense(uuid, uuid, int, date, text, jsonb) to authenticated;
