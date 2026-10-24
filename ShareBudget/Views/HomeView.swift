@@ -28,7 +28,11 @@ struct HomeView: View {
 
                 Section("項目ごと") {
                     ForEach(summary.categories) { item in
-                        CategoryProgressRow(item: item, showsMembers: store.members.count > 1)
+                        CategoryProgressRow(
+                            item: item,
+                            daily: summary.daily,
+                            showsMembers: store.members.count > 1
+                        )
                     }
                     if summary.uncategorizedSpent > 0 {
                         HStack {
@@ -78,6 +82,10 @@ private struct MonthOverview: View {
                 LabeledValue(title: "使った額", value: summary.totalSpent)
             }
 
+            if summary.totalTarget > 0 {
+                DailyOverview(summary: summary)
+            }
+
             Label {
                 Text("このままいけば旅行資金 \(summary.projectedTravelFund.signedYenText)")
             } icon: {
@@ -87,6 +95,36 @@ private struct MonthOverview: View {
             .foregroundStyle(summary.projectedTravelFund >= 0 ? Color.accentColor : Color.red)
         }
         .padding(.vertical, 4)
+    }
+}
+
+// 1日あたりの目標と、今日・今日までの使った額です。
+private struct DailyOverview: View {
+    let summary: MonthlySummary
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                LabeledValue(title: "1日あたりの目標", value: summary.dailyTarget)
+                Spacer()
+                VStack(alignment: .trailing, spacing: 2) {
+                    LabeledValue(title: "今日の支出", value: summary.todaySpent)
+                    DifferenceText(difference: summary.dailyTarget - summary.todaySpent)
+                        .font(.caption)
+                }
+            }
+            Text("目標の合計 \(summary.totalTarget.yenText) ÷ \(summary.daily.daysInMonth)日")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            HStack {
+                Text("今日（\(summary.daily.today)日）までの目標 \(summary.targetUntilToday.yenText)")
+                Spacer()
+                DifferenceText(difference: summary.targetUntilToday - summary.totalSpent)
+            }
+            .font(.caption)
+        }
+        .padding(10)
+        .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 10))
     }
 }
 
@@ -142,6 +180,7 @@ private struct DifferenceText: View {
 // 項目1つぶんの行です。使った割合をバーで表示し、その下に人ごとの内訳を出します。
 private struct CategoryProgressRow: View {
     let item: CategorySummary
+    let daily: DailyBudget
     let showsMembers: Bool
 
     var body: some View {
@@ -160,7 +199,7 @@ private struct CategoryProgressRow: View {
             )
             .tint(item.isOver ? .red : .accentColor)
 
-            Text("使った額 \(item.spent.yenText) ／ 目標 \(item.target.yenText)")
+            Text("使った額 \(item.spent.yenText) ／ 目標 \(item.target.yenText)（1日 \(daily.perDay(item.target).yenText)）")
                 .font(.caption)
                 .foregroundStyle(.secondary)
 

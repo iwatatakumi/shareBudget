@@ -67,7 +67,9 @@ struct CategoryEditView: View {
             } header: {
                 Text("1か月の目標金額（人ごと）")
             } footer: {
-                Text("この金額より使わずに済んだ分が、旅行資金になります。")
+                let total = (targets ?? [:]).values.reduce(0, +)
+                let daily = DailyBudget()
+                Text("1日あたり \(daily.perDay(total).yenText)（合計 ÷ 今月の\(daily.daysInMonth)日）。この金額より使わずに済んだ分が、旅行資金になります。")
             }
         }
         .navigationTitle(category == nil ? "項目の追加" : "項目の編集")
