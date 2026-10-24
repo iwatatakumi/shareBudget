@@ -30,6 +30,8 @@ final class BudgetStore {
     var expenses: [Expense] = []
     /// 画面に出すエラーの文章
     var errorMessage: String?
+    /// つながらなかったときの、くわしいエラーの文章（つながらなかった画面に出します）
+    var connectionError: String?
 
     private let client: SupabaseClient?
 
@@ -57,17 +59,29 @@ final class BudgetStore {
     func start() async {
         guard let client else { return }
         phase = .loading
+        connectionError = nil
         do {
-            let session: Session
-            if let saved = try? await client.auth.session {
-                session = saved
-            } else {
+            var session = try? await client.auth.session
+            if session != nil {
+                // 端末に残っているログイン情報が、いまのSupabaseで使えるか確かめます。
+                // データベースを作り直すと古いログイン情報は使えなくなるので、そのときは消して作り直します。
+                do {
+                    _ = try await client.auth.user()
+                } catch let error as URLError {
+                    // インターネットにつながらないだけなので、ログイン情報は消さない
+                    throw error
+                } catch {
+                    try? await client.auth.signOut(scope: .local)
+                    session = nil
+                }
+            }
+            if session == nil {
                 session = try await client.auth.signInAnonymously()
             }
-            userId = session.user.id
+            userId = session?.user.id
             await reload()
         } catch {
-            errorMessage = "Supabaseにつなげませんでした。\n\(error.localizedDescription)"
+            connectionError = error.localizedDescription
             phase = .connectionFailed
         }
     }
@@ -148,9 +162,11 @@ final class BudgetStore {
             self.expenses = expenses
             phase = .ready
         } catch {
-            errorMessage = "データを読み込めませんでした。\n\(error.localizedDescription)"
             if phase == .loading {
+                connectionError = error.localizedDescription
                 phase = .connectionFailed
+            } else {
+                errorMessage = "データを読み込めませんでした。\n\(error.localizedDescription)"
             }
         }
     }
