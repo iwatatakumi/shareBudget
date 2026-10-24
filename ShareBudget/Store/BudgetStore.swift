@@ -30,8 +30,6 @@ final class BudgetStore {
     var expenses: [Expense] = []
     /// 月ごとの支出の合計（"2026-10" → 金額）。旅行資金の記録に使います。
     var monthlySpent: [String: Int] = [:]
-    /// AIが探した旅行先の候補（まだ探していなければ nil）
-    var travelSuggestions: TravelSuggestions?
     /// 画面に出すエラーの文章
     var errorMessage: String?
     /// つながらなかったときの、くわしいエラーの文章（つながらなかった画面に出します）
@@ -160,13 +158,8 @@ final class BudgetStore {
                 .execute().value
 
             let monthly: [MonthlySpent] = try await client.rpc("monthly_spent").execute().value
-            // 旅行先の候補は形が変わっても家計簿は使えるように、失敗しても止めません。
-            let suggestions: [TravelSuggestions]? = try? await client
-                .from("travel_suggestions").select()
-                .execute().value
 
             self.monthlySpent = Dictionary(monthly.map { ($0.month, $0.total) }, uniquingKeysWith: +)
-            self.travelSuggestions = suggestions?.first
             self.household = households.first
             self.members = members.sorted { $0.userId == userId && $1.userId != userId }
             self.categories = categories
@@ -284,33 +277,6 @@ final class BudgetStore {
         }
     }
 
-    // MARK: - 旅行先の候補
-
-    /// AI（Supabaseの travel-ideas 関数）に、旅行資金に合った旅行先を探してもらいます。
-    /// 費用を抑えるため、1時間以内にもう一度押したときは前回の結果が返ってきます。
-    func searchTravelIdeas(fund: Int) async -> Bool {
-        guard let client else { return false }
-        do {
-            let result: TravelSuggestions = try await client.functions.invoke(
-                "travel-ideas",
-                options: FunctionInvokeOptions(body: TravelIdeasRequest(fund: fund, people: max(members.count, 1)))
-            )
-            travelSuggestions = result
-            return true
-        } catch FunctionsError.httpError(let code, let data) {
-            if code == 404 {
-                errorMessage = "AIで探す準備がまだです。READMEの「AIで旅行先を探す準備」の手順で、Supabaseに travel-ideas 関数を追加してください。"
-            } else {
-                let detail = (try? JSONDecoder().decode(FunctionErrorBody.self, from: data))?.error
-                errorMessage = "旅行先を探せませんでした。\n\(detail ?? "エラー番号 \(code)")"
-            }
-            return false
-        } catch {
-            errorMessage = "旅行先を探せませんでした。\n\(error.localizedDescription)"
-            return false
-        }
-    }
-
     // MARK: - 便利な調べもの
 
     var me: Member? {
@@ -358,7 +324,6 @@ final class BudgetStore {
         targets = []
         expenses = []
         monthlySpent = [:]
-        travelSuggestions = nil
     }
 }
 
@@ -374,15 +339,6 @@ private struct NewCategory: Encodable {
         case householdId = "household_id"
         case sortOrder = "sort_order"
     }
-}
-
-private struct TravelIdeasRequest: Encodable {
-    let fund: Int
-    let people: Int
-}
-
-private struct FunctionErrorBody: Decodable {
-    let error: String
 }
 
 private struct SaveExpenseParams: Encodable {

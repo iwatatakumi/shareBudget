@@ -1,14 +1,18 @@
 import SwiftUI
 
 // 旅行資金タブです。貯まった旅行資金の合計と月ごとの記録、
-// それに合わせた旅行先の候補（AIが探したもの、またはアプリに入っている参考の候補）を表示します。
+// それに合わせた旅行先の候補（アプリに入っているデータ）を表示します。
 struct TravelFundView: View {
     @Environment(BudgetStore.self) private var store
-    @State private var isSearching = false
+    /// true のとき、いまの旅行資金で行ける候補だけを表示します
+    @State private var showsAffordableOnly = false
 
     var body: some View {
         let fund = TravelFund(store: store)
         let people = max(store.members.count, 1)
+        let ideas = TravelIdea.samples
+            .filter { !showsAffordableOnly || $0.costPerPerson * people <= fund.total }
+            .sorted { $0.costPerPerson < $1.costPerPerson }
 
         NavigationStack {
             List {
@@ -27,59 +31,25 @@ struct TravelFundView: View {
                 }
 
                 Section {
-                    searchButton(fund: fund.total)
-                    // AIの結果に同じ名前の候補があっても困らないように、並び順で区別します。
-                    ForEach(Array(ideas.enumerated()), id: \.offset) { _, idea in
+                    Toggle("いまの旅行資金で行ける所だけ", isOn: $showsAffordableOnly)
+                    if ideas.isEmpty {
+                        Text("いまの旅行資金で行ける候補はまだありません。")
+                            .foregroundStyle(.secondary)
+                    }
+                    ForEach(ideas) { idea in
                         TravelIdeaRow(idea: idea, people: people, fund: fund.total)
                     }
                 } header: {
                     Text("旅行先の候補（\(people)人で行く場合）")
                 } footer: {
-                    Text(ideasFooter)
+                    Text("東京発・1人あたりのおおまかな目安です。実際の費用は時期や予約のしかたで変わるので、「最新の航空券の値段を調べる」で確かめてください。")
                 }
             }
             .navigationTitle("旅行資金")
             .refreshable {
                 await store.reload()
             }
-            .overlay {
-                if isSearching {
-                    ProgressView("AIが旅行先を探しています…\n（1分ほどかかることがあります）")
-                        .multilineTextAlignment(.center)
-                        .padding()
-                        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
-                }
-            }
         }
-    }
-
-    /// 表示する候補。AIで探していれば、その結果を使います。
-    private var ideas: [TravelIdea] {
-        if let ideas = store.travelSuggestions?.ideas, !ideas.isEmpty {
-            return ideas
-        }
-        return TravelIdea.samples
-    }
-
-    private var ideasFooter: String {
-        if let suggestions = store.travelSuggestions, !suggestions.ideas.isEmpty {
-            let date = suggestions.createdDate?.formatted(date: .abbreviated, time: .shortened) ?? ""
-            return "\(date)にAIがネットで調べた、日本発の費用の目安です。実際の費用は時期や予約のしかたで変わります。"
-        }
-        return "アプリに入っている参考の候補です（日本発・おおまかな目安）。「AIで旅行先を探す」を押すと、いまの旅行資金に合わせて最新の情報で探します。"
-    }
-
-    private func searchButton(fund: Int) -> some View {
-        Button {
-            Task {
-                isSearching = true
-                _ = await store.searchTravelIdeas(fund: fund)
-                isSearching = false
-            }
-        } label: {
-            Label("AIで旅行先を探す", systemImage: "sparkles")
-        }
-        .disabled(isSearching)
     }
 }
 
@@ -174,6 +144,15 @@ private struct TravelIdeaRow: View {
                 }
             }
             .font(.subheadline)
+
+            // Safari でGoogleフライトを開きます（無料で、最新の値段を調べられます）
+            if let url = idea.flightSearchURL {
+                Link(destination: url) {
+                    Label("最新の航空券の値段を調べる", systemImage: "safari")
+                }
+                .font(.subheadline)
+                .buttonStyle(.borderless)
+            }
         }
         .padding(.vertical, 4)
     }

@@ -21,33 +21,17 @@ struct TravelIdea: Codable, Identifiable, Hashable {
 
     var id: String { city + route }
 
+    /// 最新の航空券の値段をネットで調べるためのリンク（Googleフライト）
+    var flightSearchURL: URL? {
+        var components = URLComponents(string: "https://www.google.com/travel/flights")
+        components?.queryItems = [URLQueryItem(name: "q", value: "東京 から \(city) 航空券")]
+        return components?.url
+    }
+
     enum CodingKeys: String, CodingKey {
         case city, country, route, days, highlights
         case costPerPerson = "cost_per_person"
         case costNote = "cost_note"
-    }
-}
-
-/// AIが探した旅行先の候補（家計簿ごとに1つ保存されます）
-struct TravelSuggestions: Codable {
-    let householdId: UUID
-    var ideas: [TravelIdea]
-    /// 探した日時（"2026-10-24T16:40:00+00:00" のような文字）
-    var createdAt: String
-
-    enum CodingKeys: String, CodingKey {
-        case ideas
-        case householdId = "household_id"
-        case createdAt = "created_at"
-    }
-
-    /// 探した日時を Date 型にしたもの
-    var createdDate: Date? {
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        if let date = formatter.date(from: createdAt) { return date }
-        formatter.formatOptions = [.withInternetDateTime]
-        return formatter.date(from: createdAt)
     }
 }
 
@@ -128,8 +112,8 @@ struct TravelFund {
 }
 
 extension TravelIdea {
-    /// AIで探す前に表示する、アプリに入っている参考の候補です。
-    /// 日本発・1人あたりのおおまかな目安で、実際の費用は時期によって大きく変わります。
+    /// アプリに入っている旅行先の候補です（無料で使えるように、ネットやAIは使っていません）。
+    /// 東京発・1人あたりのおおまかな目安で、実際の費用は時期や予約のしかたで大きく変わります。
     static let samples: [TravelIdea] = [
         TravelIdea(
             city: "ソウル", country: "韓国", route: "ソウル（明洞・景福宮）→ 北村韓屋村",
@@ -138,10 +122,22 @@ extension TravelIdea {
             highlights: ["屋台グルメ", "韓服で古宮めぐり"]
         ),
         TravelIdea(
+            city: "釜山", country: "韓国", route: "釜山（海雲台）→ 甘川文化村 → チャガルチ市場",
+            days: 3, costPerPerson: 65_000,
+            costNote: "往復航空券 約3万円・ホテル2泊 約1.5万円・食費や交通 約2万円",
+            highlights: ["海鮮", "カラフルな坂の町"]
+        ),
+        TravelIdea(
             city: "台北", country: "台湾", route: "台北 → 九份 → 台北（夜市）",
             days: 4, costPerPerson: 100_000,
             costNote: "往復航空券 約4万円・ホテル3泊 約3万円・食費や交通 約3万円",
             highlights: ["九份の夜景", "士林夜市"]
+        ),
+        TravelIdea(
+            city: "香港", country: "中国（香港）", route: "香港島 → 九龍 → マカオ日帰り",
+            days: 4, costPerPerson: 130_000,
+            costNote: "往復航空券 約5万円・ホテル3泊 約5万円・食費や交通 約3万円",
+            highlights: ["100万ドルの夜景", "飲茶"]
         ),
         TravelIdea(
             city: "バンコク", country: "タイ", route: "バンコク → アユタヤ日帰り",
@@ -156,6 +152,18 @@ extension TravelIdea {
             highlights: ["ハロン湾の絶景", "フォーの食べ歩き"]
         ),
         TravelIdea(
+            city: "シンガポール", country: "シンガポール", route: "マリーナベイ → セントーサ島 → チャイナタウン",
+            days: 4, costPerPerson: 170_000,
+            costNote: "往復航空券 約7万円・ホテル3泊 約6万円・食費や交通 約4万円",
+            highlights: ["マリーナベイ・サンズ", "ナイトサファリ"]
+        ),
+        TravelIdea(
+            city: "バリ島", country: "インドネシア", route: "ウブド → クタ → ウルワツ寺院",
+            days: 6, costPerPerson: 180_000,
+            costNote: "往復航空券 約9万円・ホテル4泊 約5万円・食費や交通 約4万円",
+            highlights: ["ライステラス", "夕日とケチャダンス"]
+        ),
+        TravelIdea(
             city: "ホノルル", country: "アメリカ（ハワイ）", route: "ホノルル（ワイキキ）→ ノースショア",
             days: 6, costPerPerson: 300_000,
             costNote: "往復航空券 約12万円・ホテル4泊 約12万円・食費や交通 約6万円",
@@ -166,6 +174,18 @@ extension TravelIdea {
             days: 8, costPerPerson: 450_000,
             costNote: "往復航空券 約20万円・ホテル6泊 約15万円・食費や交通 約10万円",
             highlights: ["美術館めぐり", "モン・サン・ミッシェル"]
+        ),
+        TravelIdea(
+            city: "ローマ", country: "イタリア", route: "ローマ → フィレンツェ → ヴェネツィア",
+            days: 9, costPerPerson: 480_000,
+            costNote: "往復航空券 約20万円・ホテル7泊 約16万円・鉄道や食費 約12万円",
+            highlights: ["コロッセオ", "ゴンドラ"]
+        ),
+        TravelIdea(
+            city: "ニューヨーク", country: "アメリカ", route: "マンハッタン → ブルックリン → 自由の女神",
+            days: 7, costPerPerson: 500_000,
+            costNote: "往復航空券 約22万円・ホテル5泊 約18万円・食費や交通 約10万円",
+            highlights: ["ブロードウェイ", "セントラルパーク"]
         ),
     ]
 }
