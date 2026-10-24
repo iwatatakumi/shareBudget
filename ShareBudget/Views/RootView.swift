@@ -55,7 +55,14 @@ private struct ConnectionFailedView: View {
         ContentUnavailableView {
             Label("つながりませんでした", systemImage: "wifi.exclamationmark")
         } description: {
-            Text("インターネットにつながっているか確かめてください。\nはじめて使うときは、Supabaseの「Allow anonymous sign-ins」がオンになっている必要があります。")
+            VStack(spacing: 12) {
+                Text("インターネットにつながっているか確かめてください。\nはじめて使うときは、Supabaseの「Allow anonymous sign-ins」がオンになっている必要があります。")
+                if let detail = store.connectionError {
+                    Text("くわしい内容: \(detail)")
+                        .font(.footnote)
+                        .textSelection(.enabled)
+                }
+            }
         } actions: {
             Button("もう一度試す") {
                 Task { await store.start() }
