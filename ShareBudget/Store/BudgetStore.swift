@@ -12,9 +12,9 @@ final class BudgetStore {
         /// Supabaseの設定がまだ（SupabaseConfig.swift を書きかえていない）
         case notConfigured
         case loading
-        /// ログインしていない
-        case signedOut
-        /// ログインしたが、まだ家計簿に参加していない
+        /// Supabaseにつながらなかった（ネットがない、匿名ログインがオフ など）
+        case connectionFailed
+        /// まだ家計簿に参加していない
         case needsHousehold
         /// 家計簿を使える
         case ready
@@ -49,72 +49,63 @@ final class BudgetStore {
         phase = .ready
     }
 
-    // MARK: - 起動とログイン
+    // MARK: - 起動
 
-    /// アプリを開いたときに、ログイン済みかを確かめてデータを読み込みます。
+    /// アプリを開いたときに、Supabaseにつないでデータを読み込みます。
+    /// メールアドレスは使わず「匿名ログイン」をします。これはSupabaseが、この端末のアプリ専用の
+    /// 名前のない利用者を自動で作ってくれる仕組みで、一度作ると端末に記録され、次からも同じ利用者になります。
     func start() async {
         guard let client else { return }
         phase = .loading
         do {
-            let session = try await client.auth.session
+            let session: Session
+            if let saved = try? await client.auth.session {
+                session = saved
+            } else {
+                session = try await client.auth.signInAnonymously()
+            }
             userId = session.user.id
             await reload()
         } catch {
-            // 保存されたログイン情報がない、または期限切れ
-            phase = .signedOut
+            errorMessage = "Supabaseにつなげませんでした。\n\(error.localizedDescription)"
+            phase = .connectionFailed
         }
-    }
-
-    func signIn(email: String, password: String) async {
-        guard let client else { return }
-        await run {
-            let session = try await client.auth.signIn(email: email, password: password)
-            self.userId = session.user.id
-            await self.reload()
-        }
-    }
-
-    /// 新しく登録します。登録確認メールが必要な設定のときは false を返します。
-    func signUp(email: String, password: String) async -> Bool {
-        guard let client else { return false }
-        var signedIn = false
-        await run {
-            let response = try await client.auth.signUp(email: email, password: password)
-            if let session = response.session {
-                self.userId = session.user.id
-                signedIn = true
-                await self.reload()
-            }
-        }
-        return signedIn
-    }
-
-    func signOut() async {
-        guard let client else { return }
-        await run {
-            try await client.auth.signOut()
-        }
-        clearData()
-        phase = .signedOut
     }
 
     // MARK: - 家計簿を作る・参加する
 
-    func createHousehold(displayName: String) async {
+    /// 新しい家計簿を作ります。作った人が管理者になり、password が参加用パスワードになります。
+    func createHousehold(displayName: String, password: String) async {
         guard let client else { return }
         await run {
             try await client
-                .rpc("create_household", params: ["p_display_name": displayName])
+                .rpc("create_household", params: ["p_display_name": displayName, "p_password": password])
                 .execute()
             await self.reload()
         }
     }
 
-    func joinHousehold(inviteCode: String, displayName: String) async {
+    /// 家計簿ID（招待コード）と、管理者から教えてもらったパスワードで参加します。
+    func joinHousehold(inviteCode: String, password: String, displayName: String) async {
         guard let client else { return }
         await run {
             try await client
-                .rpc("join_household", params: ["p_invite_code": inviteCode, "p_display_name": displayName])
+                .rpc("join_household", params: [
+                    "p_invite_code": inviteCode,
+                    "p_password": password,
+                    "p_display_name": displayName,
+                ])
+                .execute()
+            await self.reload()
+        }
+    }
+
+    /// 管理者が参加用パスワードを変えます。
+    func changePassword(_ password: String) async -> Bool {
+        guard let client else { return false }
+        return await run {
+            try await client
+                .rpc("change_household_password", params: ["p_password": password])
                 .execute()
             await self.reload()
         }
@@ -159,7 +150,7 @@ final class BudgetStore {
         } catch {
             errorMessage = "データを読み込めませんでした。\n\(error.localizedDescription)"
             if phase == .loading {
-                phase = .signedOut
+                phase = .connectionFailed
             }
         }
     }
@@ -269,6 +260,12 @@ final class BudgetStore {
 
     var me: Member? {
         members.first { $0.userId == userId }
+    }
+
+    /// 自分が管理者（家計簿を作った人）か。管理者が決まっていない古い家計簿では、全員を管理者として扱います。
+    var isOwner: Bool {
+        guard let household else { return false }
+        return household.ownerId == nil || household.ownerId == userId
     }
 
     func memberName(_ userId: UUID) -> String {

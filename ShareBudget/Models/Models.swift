@@ -8,10 +8,13 @@ struct Household: Codable, Identifiable {
     let id: UUID
     var name: String
     let inviteCode: String
+    /// 管理者（家計簿を作った人）
+    var ownerId: UUID?
 
     enum CodingKeys: String, CodingKey {
         case id, name
         case inviteCode = "invite_code"
+        case ownerId = "owner_id"
     }
 }
 

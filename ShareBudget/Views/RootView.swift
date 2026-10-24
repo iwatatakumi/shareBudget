@@ -11,8 +11,8 @@ struct RootView: View {
                 NotConfiguredView()
             case .loading:
                 ProgressView("読み込み中…")
-            case .signedOut:
-                AuthView()
+            case .connectionFailed:
+                ConnectionFailedView()
             case .needsHousehold:
                 HouseholdSetupView()
             case .ready:
@@ -44,6 +44,24 @@ private struct NotConfiguredView: View {
             systemImage: "gearshape.2",
             description: Text("Xcodeで「Supabase」フォルダの SupabaseConfig.swift を開き、Project URL と publishable key を書きかえてください。")
         )
+    }
+}
+
+// Supabaseにつながらなかったときの画面です。
+private struct ConnectionFailedView: View {
+    @Environment(BudgetStore.self) private var store
+
+    var body: some View {
+        ContentUnavailableView {
+            Label("つながりませんでした", systemImage: "wifi.exclamationmark")
+        } description: {
+            Text("インターネットにつながっているか確かめてください。\nはじめて使うときは、Supabaseの「Allow anonymous sign-ins」がオンになっている必要があります。")
+        } actions: {
+            Button("もう一度試す") {
+                Task { await store.start() }
+            }
+            .buttonStyle(.borderedProminent)
+        }
     }
 }
 

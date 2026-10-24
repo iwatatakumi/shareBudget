@@ -1,6 +1,6 @@
 import SwiftUI
 
-// 家計簿のメンバー・招待コード、項目と目標金額を設定する画面です。
+// 家計簿のメンバー・家計簿ID、項目と目標金額を設定する画面です。
 struct SettingsView: View {
     @Environment(BudgetStore.self) private var store
 
@@ -11,13 +11,18 @@ struct SettingsView: View {
         NavigationStack {
             List {
                 householdSection
-                categorySection
-
-                Section {
-                    Button("ログアウト", role: .destructive) {
-                        Task { await store.signOut() }
+                if store.isOwner {
+                    Section {
+                        NavigationLink("参加用パスワードを変える") {
+                            PasswordChangeView()
+                        }
+                    } header: {
+                        Text("管理者")
+                    } footer: {
+                        Text("変えたあとは、新しいパスワードでしか参加できません。すでに参加している人はそのまま使えます。")
                     }
                 }
+                categorySection
             }
             .navigationTitle("設定")
             .toolbar {
@@ -59,22 +64,22 @@ struct SettingsView: View {
 
             if let household = store.household {
                 HStack {
-                    Text("招待コード")
+                    Text("家計簿ID")
                     Spacer()
                     Text(household.inviteCode)
                         .font(.body.monospaced().bold())
                         .textSelection(.enabled)
                 }
                 ShareLink(
-                    item: "シェアバジェットの家計簿に参加してください。招待コード: \(household.inviteCode)"
+                    item: "シェアバジェットの家計簿に参加してください。家計簿ID: \(household.inviteCode)（パスワードは別に伝えます）"
                 ) {
-                    Label("招待コードを送る", systemImage: "square.and.arrow.up")
+                    Label("家計簿IDを送る", systemImage: "square.and.arrow.up")
                 }
             }
         } header: {
             Text("家計簿のメンバー")
         } footer: {
-            Text("ルームメイトは、アプリで新規登録したあと「この家計簿に参加する」から招待コードを入れます。")
+            Text("ルームメイトは、アプリを開いて「この家計簿に参加する」に家計簿IDとパスワードを入れます。パスワードは、家計簿IDとは別に口頭などで伝えてください。")
         }
     }
 
@@ -113,6 +118,36 @@ struct SettingsView: View {
 
     private func totalTarget(of category: BudgetCategory) -> Int {
         store.members.reduce(0) { $0 + store.target(categoryId: category.id, userId: $1.userId) }
+    }
+}
+
+// 管理者が参加用パスワードを変える画面です。
+private struct PasswordChangeView: View {
+    @Environment(BudgetStore.self) private var store
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var password = ""
+    @State private var isWorking = false
+
+    var body: some View {
+        Form {
+            Section {
+                SecureField("新しいパスワード（4文字以上）", text: $password)
+            }
+            Section {
+                Button("変える") {
+                    Task {
+                        isWorking = true
+                        if await store.changePassword(password) {
+                            dismiss()
+                        }
+                        isWorking = false
+                    }
+                }
+                .disabled(password.count < 4 || isWorking)
+            }
+        }
+        .navigationTitle("参加用パスワード")
     }
 }
 

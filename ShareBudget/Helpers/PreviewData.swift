@@ -10,7 +10,7 @@ enum PreviewData {
         let householdId = UUID()
         let store = BudgetStore(previewUserId: me)
 
-        store.household = Household(id: householdId, name: "家計簿", inviteCode: "AB12CD")
+        store.household = Household(id: householdId, name: "家計簿", inviteCode: "AB12CD", ownerId: me)
         store.members = [
             Member(householdId: householdId, userId: me, displayName: "たくみ"),
             Member(householdId: householdId, userId: roommate, displayName: "ルームメイト"),
