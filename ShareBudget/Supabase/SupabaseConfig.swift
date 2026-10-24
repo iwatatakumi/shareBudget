@@ -6,8 +6,8 @@ import Foundation
 // publishable key（または anon public キー）は、アプリに入れて公開しても大丈夫なキーです。
 // 「secret」「service_role」と書かれたキーは、ここに絶対に入れないでください。
 enum SupabaseConfig {
-    static let url = "https://YOUR-PROJECT.supabase.co"
-    static let publishableKey = "YOUR-PUBLISHABLE-KEY"
+    static let url = "https://iyarbsxybxurfxvrzipt.supabase.co"
+    static let publishableKey = "sb_publishable_8oJI3AwOdXbLJJGM_ItE1g_s0IV42Mb"
 
     /// 上の2つが書きかえられているかどうか
     static var isConfigured: Bool {
