@@ -48,12 +48,14 @@ struct MonthlyFund: Identifiable {
     let month: String
     let target: Int
     let spent: Int
+    /// この月の臨時収入
+    let income: Int
     /// 今月（まだ途中の月）かどうか
     let isCurrent: Bool
 
     var id: String { month }
-    /// この月に貯まった旅行資金（マイナスなら目標オーバー）
-    var fund: Int { target - spent }
+    /// この月に貯まった旅行資金（目標 − 使った額 + 臨時収入。マイナスなら目標オーバー）
+    var fund: Int { target - spent + income }
 
     /// 「2026年10月」のような表示用の文字
     var title: String {
@@ -87,12 +89,15 @@ struct TravelFund {
                 month: currentMonth,
                 target: summary.targetUntilToday,
                 spent: summary.totalSpent,
+                income: summary.extraIncome,
                 isCurrent: true
             ),
         ]
 
         // 家計簿を作った月（"2026-10-24T..." の最初の7文字）
-        let startMonth = store.household.map { String($0.createdAt.prefix(7)) } ?? currentMonth
+        // それより前の日付で入れた臨時収入があれば、その月から数えます。
+        let createdMonth = store.household.map { String($0.createdAt.prefix(7)) } ?? currentMonth
+        let startMonth = ([createdMonth] + store.incomes.map(\.month)).min() ?? createdMonth
         if var date = DayString.date(from: currentMonth + "-01") {
             while true {
                 guard let previous = calendar.date(byAdding: .month, value: -1, to: date) else { break }
@@ -102,6 +107,7 @@ struct TravelFund {
                     month: month,
                     target: summary.totalTarget,
                     spent: store.monthlySpent[month] ?? 0,
+                    income: store.incomeTotal(month: month),
                     isCurrent: false
                 ))
                 date = previous

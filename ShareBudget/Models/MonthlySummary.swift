@@ -62,6 +62,8 @@ struct MonthlySummary {
     let uncategorizedSpent: Int
     /// 今日の支出の合計
     let todaySpent: Int
+    /// 今月の臨時収入の合計
+    let extraIncome: Int
     let daily: DailyBudget
 
     @MainActor
@@ -69,6 +71,7 @@ struct MonthlySummary {
         let expenses = store.expenses
         daily = DailyBudget(now: now)
         let todayString = DayString.string(from: now)
+        extraIncome = store.incomeTotal(month: String(todayString.prefix(7)))
         todaySpent = expenses.filter { $0.spentOn == todayString }.reduce(0) { $0 + $1.amount }
 
         categories = store.categories.map { category in
@@ -126,9 +129,9 @@ struct MonthlySummary {
     }
 
     /// 今日までの旅行資金。
-    /// 各項目の「今日までの目標 − 使った額」の合計から、項目なしの支出を引いた額です。
+    /// 各項目の「今日までの目標 − 使った額」の合計から、項目なしの支出を引き、今月の臨時収入を足した額です。
     /// 目標より多く使っているとマイナスになります。
     var projectedTravelFund: Int {
-        targetUntilToday - totalSpent
+        targetUntilToday - totalSpent + extraIncome
     }
 }
