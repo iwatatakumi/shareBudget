@@ -293,7 +293,21 @@ begin
 end;
 $$;
 
+-- ========== 月ごとの支出の合計（旅行資金の記録に使います） ==========
+
+create or replace function public.monthly_spent()
+returns table (month text, total bigint)
+language sql stable security invoker set search_path = public
+as $$
+  select to_char(spent_on, 'YYYY-MM') as month, sum(amount) as total
+  from public.expenses
+  where household_id = public.my_household_id()
+  group by 1
+  order by 1
+$$;
+
 grant execute on function public.create_household(text, text) to authenticated;
+grant execute on function public.monthly_spent() to authenticated;
 grant execute on function public.join_household(text, text, text) to authenticated;
 grant execute on function public.change_household_password(text) to authenticated;
 grant execute on function public.save_expense(uuid, uuid, int, date, text, jsonb) to authenticated;

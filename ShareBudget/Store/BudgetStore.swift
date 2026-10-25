@@ -28,6 +28,8 @@ final class BudgetStore {
     var targets: [MemberTarget] = []
     /// 今月の支出（新しい順）
     var expenses: [Expense] = []
+    /// 月ごとの支出の合計（"2026-10" → 金額）。旅行資金の記録に使います。
+    var monthlySpent: [String: Int] = [:]
     /// 画面に出すエラーの文章
     var errorMessage: String?
     /// つながらなかったときの、くわしいエラーの文章（つながらなかった画面に出します）
@@ -155,6 +157,9 @@ final class BudgetStore {
                 .order("created_at", ascending: false)
                 .execute().value
 
+            let monthly: [MonthlySpent] = try await client.rpc("monthly_spent").execute().value
+
+            self.monthlySpent = Dictionary(monthly.map { ($0.month, $0.total) }, uniquingKeysWith: +)
             self.household = households.first
             self.members = members.sorted { $0.userId == userId && $1.userId != userId }
             self.categories = categories
@@ -318,6 +323,7 @@ final class BudgetStore {
         categories = []
         targets = []
         expenses = []
+        monthlySpent = [:]
     }
 }
 

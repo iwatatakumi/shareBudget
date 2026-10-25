@@ -10,11 +10,14 @@ struct Household: Codable, Identifiable {
     let inviteCode: String
     /// 管理者（家計簿を作った人）
     var ownerId: UUID?
+    /// 作った日時（"2026-10-24T07:50:00+00:00" のような文字）
+    var createdAt: String
 
     enum CodingKeys: String, CodingKey {
         case id, name
         case inviteCode = "invite_code"
         case ownerId = "owner_id"
+        case createdAt = "created_at"
     }
 }
 
