@@ -323,6 +323,47 @@ as $$
   order by 1
 $$;
 
+-- ========== アカウントとデータの削除 ==========
+
+-- 自分のアカウントと、自分のデータを削除します（App Storeのルールで、アプリに必要な機能です）。
+-- ・家計簿のメンバーが自分だけなら、家計簿ごと（支出・項目・臨時収入も）すべて削除します。
+-- ・ほかのメンバーがいるなら、家計簿は残します。自分の目標金額と支出の配分は削除し、
+--   自分が入力した支出・臨時収入は、ほかのメンバー（いちばん早く参加した人）が入力したものとして残します。
+--   自分が管理者だった場合は、その人が新しい管理者になります。
+create or replace function public.delete_my_account()
+returns void
+language plpgsql security definer set search_path = public
+as $$
+declare
+  me uuid := auth.uid();
+  hid uuid := public.my_household_id();
+  heir uuid;
+begin
+  if me is null then
+    raise exception 'アプリを開き直してください';
+  end if;
+
+  if hid is not null then
+    select user_id into heir from public.members
+      where household_id = hid and user_id <> me
+      order by joined_at
+      limit 1;
+
+    if heir is null then
+      delete from public.households where id = hid;
+    else
+      update public.expenses set created_by = heir where household_id = hid and created_by = me;
+      update public.incomes set created_by = heir where household_id = hid and created_by = me;
+      update public.households set owner_id = heir where id = hid and owner_id = me;
+    end if;
+  end if;
+
+  -- ログイン情報を消すと、メンバー・目標金額・配分も自動で消えます（on delete cascade）
+  delete from auth.users where id = me;
+end;
+$$;
+
+grant execute on function public.delete_my_account() to authenticated;
 grant execute on function public.create_household(text, text) to authenticated;
 grant execute on function public.monthly_spent() to authenticated;
 grant execute on function public.join_household(text, text, text) to authenticated;
