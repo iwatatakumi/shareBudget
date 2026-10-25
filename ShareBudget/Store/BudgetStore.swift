@@ -129,6 +129,25 @@ final class BudgetStore {
         }
     }
 
+    // MARK: - アカウントの削除
+
+    /// 自分のアカウントとデータを削除します。削除したあとは、はじめてアプリを開いたときと同じ状態に戻ります。
+    /// ほかのメンバーがいる家計簿は残り、自分ひとりの家計簿は家計簿ごと削除されます（schema.sql の delete_my_account）。
+    @discardableResult
+    func deleteAccount() async -> Bool {
+        guard let client else { return false }
+        let deleted = await run {
+            try await client.rpc("delete_my_account").execute()
+        }
+        guard deleted else { return false }
+        // この端末に残っているログイン情報も消し、新しい匿名の利用者で始め直します
+        try? await client.auth.signOut(scope: .local)
+        clearData()
+        userId = nil
+        await start()
+        return true
+    }
+
     // MARK: - 読み込み
 
     /// Supabaseから最新のデータを読み込みます。

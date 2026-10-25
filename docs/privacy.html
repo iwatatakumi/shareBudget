@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>プライバシーポリシー｜シェアバジェット</title>
+<style>
+  :root { --bg: #0A0E24; --card: #151a3a; --text: #ECEAF4; --muted: #A9A6BD; --gold: #E8C36A; --line: rgba(255,255,255,.1); }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: linear-gradient(#0A0E24, #1F0C2C) fixed; color: var(--text);
+         font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Noto Sans JP", sans-serif; line-height: 1.8; }
+  main { max-width: 760px; margin: 0 auto; padding: 48px 16px 64px; }
+  h1 { font-size: 28px; margin: 0 0 4px; color: var(--gold); }
+  h2 { font-size: 18px; margin: 32px 0 8px; padding-bottom: 6px; border-bottom: 1px solid var(--line); }
+  p, li { font-size: 15px; }
+  .meta { color: var(--muted); font-size: 13px; margin-bottom: 24px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; background: var(--card); border-radius: 12px; overflow: hidden; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--gold); font-weight: 600; width: 34%; }
+  tr:last-child th, tr:last-child td { border-bottom: none; }
+  a { color: var(--gold); }
+</style>
+</head>
+<body>
+<main>
+  <h1>プライバシーポリシー</h1>
+  <p class="meta">シェアバジェット（家計簿共有アプリ）／制定日：2026年10月25日</p>
+
+  <p>シェアバジェット（以下「本アプリ」）は、利用者の情報を、家計簿を共有するために必要な範囲でのみ取り扱います。本ポリシーでは、本アプリが扱う情報と、その使い方を説明します。</p>
+
+  <h2>1. 取り扱う情報</h2>
+  <table>
+    <tr><th>利用者を区別するための番号</th><td>本アプリを最初に開いたときに自動で作られる、名前やメールアドレスと結びつかない番号（匿名のアカウント）です。</td></tr>
+    <tr><th>表示名</th><td>家計簿の作成・参加のときに入力する名前です。同じ家計簿のメンバーに表示されます。</td></tr>
+    <tr><th>家計簿のデータ</th><td>支出の金額・日付・メモ・項目・配分、項目ごとの目標金額、臨時収入の金額・日付・メモです。</td></tr>
+    <tr><th>参加用パスワード</th><td>元に戻せない形（ハッシュ）に変換して保存し、そのままの形では保存しません。</td></tr>
+  </table>
+  <p>本アプリは、氏名・メールアドレス・電話番号・位置情報・連絡先・写真などを取得しません。</p>
+
+  <h2>2. 利用目的</h2>
+  <p>取り扱う情報は、家計簿の記録・集計・表示と、同じ家計簿のメンバーとの共有のためだけに使います。広告の表示や、利用者の行動の追跡（トラッキング）には使いません。</p>
+
+  <h2>3. 保存場所と第三者への提供</h2>
+  <p>データは、データベースサービス「Supabase」（Supabase, Inc.）のサーバーに保存されます。法令にもとづく場合を除き、データを第三者に販売・提供することはありません。本アプリには広告や分析のための外部サービスは組み込まれていません。</p>
+  <p>旅行資金の画面にある「最新の航空券の値段を調べる」を押すと、Googleフライト（Google LLC）のWebページが開きます。開いた先での情報の扱いは、Googleのプライバシーポリシーにしたがいます。</p>
+
+  <h2>4. 共有の範囲</h2>
+  <p>表示名と家計簿のデータは、家計簿IDと参加用パスワードを使って同じ家計簿に参加したメンバーだけが見られます。ほかの家計簿の利用者からは見えません。</p>
+
+  <h2>5. データの削除</h2>
+  <p>本アプリの「設定」→「アカウントとデータを削除」から、いつでもアカウントとデータを削除できます。</p>
+  <ul>
+    <li>家計簿のメンバーが自分だけの場合、家計簿とそのデータがすべて削除されます。</li>
+    <li>ほかのメンバーがいる場合、自分の表示名・目標金額・支出の配分が削除され、家計簿から抜けます。家計簿と入力済みの支出・臨時収入は、ほかのメンバーのために残ります。</li>
+  </ul>
+  <p>アプリを削除（アンインストール）しただけでは、サーバーのデータは削除されません。先に上の方法で削除してください。</p>
+
+  <h2>6. 安全管理</h2>
+  <p>通信は暗号化（HTTPS）され、データベースでは、同じ家計簿のメンバーだけがそのデータを読み書きできるように制限しています。</p>
+
+  <h2>7. 本ポリシーの変更</h2>
+  <p>本ポリシーを変更する場合は、このページで内容と変更日をお知らせします。</p>
+
+  <h2>8. お問い合わせ</h2>
+  <p>本ポリシーや本アプリについてのお問い合わせは、<a href="https://github.com/iwatatakumi/shareBudget/issues">こちらのページ</a>からお送りください。</p>
+</main>
+</body>
+</html>

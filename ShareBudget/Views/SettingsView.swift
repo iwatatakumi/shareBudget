@@ -6,6 +6,12 @@ struct SettingsView: View {
 
     // 削除してよいか確認中の項目
     @State private var categoryToDelete: BudgetCategory?
+    // アカウントの削除を確認中か
+    @State private var confirmsAccountDeletion = false
+    @State private var isDeletingAccount = false
+
+    /// プライバシーポリシーのページ（GitHub Pages で公開します。docs/privacy.html）
+    private static let privacyPolicyURL = URL(string: "https://iwatatakumi.github.io/shareBudget/privacy.html")!
 
     var body: some View {
         NavigationStack {
@@ -23,6 +29,7 @@ struct SettingsView: View {
                     }
                 }
                 categorySection
+                accountSection
             }
             .navigationTitle("設定")
             .toolbar {
@@ -47,6 +54,45 @@ struct SettingsView: View {
             } message: { _ in
                 Text("この項目で入力した支出は消えずに「項目なし」になります。ルームメイトの画面からも消えます。")
             }
+            .alert("アカウントとデータを削除しますか？", isPresented: $confirmsAccountDeletion) {
+                Button("削除する", role: .destructive) {
+                    isDeletingAccount = true
+                    Task {
+                        await store.deleteAccount()
+                        isDeletingAccount = false
+                    }
+                }
+                Button("キャンセル", role: .cancel) {}
+            } message: {
+                Text(store.members.count > 1
+                    ? "あなたの目標金額と支出の配分が削除され、家計簿から抜けます。家計簿と入力した支出は、ほかのメンバーのために残ります。この操作は元に戻せません。"
+                    : "家計簿と、支出・項目・臨時収入などのデータがすべて削除されます。この操作は元に戻せません。")
+            }
+        }
+    }
+
+    // プライバシーポリシーと、アカウントの削除です。
+    private var accountSection: some View {
+        Section {
+            Link(destination: Self.privacyPolicyURL) {
+                Label("プライバシーポリシー", systemImage: "hand.raised")
+            }
+            Button(role: .destructive) {
+                confirmsAccountDeletion = true
+            } label: {
+                HStack {
+                    Label("アカウントとデータを削除", systemImage: "trash")
+                    if isDeletingAccount {
+                        Spacer()
+                        ProgressView()
+                    }
+                }
+            }
+            .disabled(isDeletingAccount)
+        } header: {
+            Text("アカウント")
+        } footer: {
+            Text("削除すると、はじめてアプリを開いたときの画面に戻ります。")
         }
     }
 
