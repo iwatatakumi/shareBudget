@@ -9,7 +9,7 @@ struct SettingsView: View {
 
     var body: some View {
         NavigationStack {
-            List {
+            LuxuryList {
                 householdSection
                 if store.isOwner {
                     Section {
@@ -133,7 +133,7 @@ private struct PasswordChangeView: View {
     @State private var isWorking = false
 
     var body: some View {
-        Form {
+        LuxuryForm {
             Section {
                 SecureField("新しいパスワード（4文字以上）", text: $password)
             }

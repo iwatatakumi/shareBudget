@@ -39,7 +39,7 @@ struct CategoryEditView: View {
     }
 
     var body: some View {
-        Form {
+        LuxuryForm {
             Section("項目の名前") {
                 TextField("例: 食費", text: $name)
                     .focused($focused)

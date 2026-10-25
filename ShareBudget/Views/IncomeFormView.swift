@@ -17,7 +17,7 @@ struct IncomeFormView: View {
 
     var body: some View {
         NavigationStack {
-            Form {
+            LuxuryForm {
                 Section("金額") {
                     HStack {
                         TextField("例: 10000", text: $amountText)

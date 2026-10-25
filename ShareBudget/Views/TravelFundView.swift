@@ -23,37 +23,42 @@ struct TravelFundView: View {
                 Section {
                     FundHeroCard(total: fund.total, nextGoal: nextGoal, people: people)
                         .listRowInsets(EdgeInsets())
-                        .listRowBackground(Theme.travelGradient)
+                        .listRowBackground(GlossyCardBackground(gradient: Theme.travelGradient))
                 }
 
-                incomeSection
+                // ここから下の行は、すりガラスのような背景にします
+                Group {
+                    incomeSection
 
-                Section {
-                    MonthlyFundChart(months: fund.months)
-                    ForEach(fund.months) { month in
-                        MonthlyFundRow(month: month)
+                    Section {
+                        MonthlyFundChart(months: fund.months)
+                        ForEach(fund.months) { month in
+                            MonthlyFundRow(month: month)
+                        }
+                    } header: {
+                        Text("月ごとの記録")
+                    } footer: {
+                        Text("終わった月は「1か月の目標 − 使った額 ＋ 臨時収入」、今月は「今日までの目標 − 使った額 ＋ 臨時収入」です。過去の月も、いまの目標金額で計算しています。")
                     }
-                } header: {
-                    Text("月ごとの記録")
-                } footer: {
-                    Text("終わった月は「1か月の目標 − 使った額 ＋ 臨時収入」、今月は「今日までの目標 − 使った額 ＋ 臨時収入」です。過去の月も、いまの目標金額で計算しています。")
-                }
 
-                Section {
-                    Toggle("いまの旅行資金で行ける所だけ", isOn: $showsAffordableOnly)
-                    if ideas.isEmpty {
-                        Text("いまの旅行資金で行ける候補はまだありません。")
-                            .foregroundStyle(.secondary)
+                    Section {
+                        Toggle("いまの旅行資金で行ける所だけ", isOn: $showsAffordableOnly)
+                        if ideas.isEmpty {
+                            Text("いまの旅行資金で行ける候補はまだありません。")
+                                .foregroundStyle(.secondary)
+                        }
+                        ForEach(ideas) { idea in
+                            TravelIdeaRow(idea: idea, people: people, fund: fund.total)
+                        }
+                    } header: {
+                        Text("旅行先の候補（\(people)人で行く場合）")
+                    } footer: {
+                        Text("東京発・1人あたりのおおまかな目安です。実際の費用は時期や予約のしかたで変わるので、「最新の航空券の値段を調べる」で確かめてください。")
                     }
-                    ForEach(ideas) { idea in
-                        TravelIdeaRow(idea: idea, people: people, fund: fund.total)
-                    }
-                } header: {
-                    Text("旅行先の候補（\(people)人で行く場合）")
-                } footer: {
-                    Text("東京発・1人あたりのおおまかな目安です。実際の費用は時期や予約のしかたで変わるので、「最新の航空券の値段を調べる」で確かめてください。")
                 }
+                .listRowBackground(Theme.glassRow)
             }
+            .luxuryBackground()
             .navigationTitle("旅行資金")
             .refreshable {
                 await store.reload()
@@ -118,7 +123,7 @@ private struct IncomeRow: View {
             Spacer()
             Text(income.amount.signedYenText)
                 .bold()
-                .foregroundStyle(Color.accentColor)
+                .foregroundStyle(Theme.goldGradient)
         }
     }
 }
@@ -142,6 +147,8 @@ private struct FundHeroCard: View {
                     .opacity(0.85)
                 Text((appeared ? total : 0).signedYenText)
                     .font(.system(size: 34, weight: .bold, design: .rounded))
+                    .foregroundStyle(Theme.goldGradient)
+                    .shadow(color: Theme.gold.opacity(0.5), radius: 8)
                     .contentTransition(.numericText())
                     .monospacedDigit()
                     .minimumScaleFactor(0.6)
@@ -164,10 +171,11 @@ private struct FundHeroCard: View {
             RingProgress(
                 progress: goalProgress,
                 lineWidth: 10,
-                gradient: AngularGradient(colors: [.white.opacity(0.6), .white], center: .center)
+                gradient: Theme.goldRing
             ) {
                 Image(systemName: "airplane")
                     .font(.title2)
+                    .foregroundStyle(Theme.goldGradient)
                     .offset(y: floating ? -4 : 4)
             }
             .frame(width: 84, height: 84)

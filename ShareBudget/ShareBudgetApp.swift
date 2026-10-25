@@ -10,6 +10,10 @@ struct ShareBudgetApp: App {
         WindowGroup {
             RootView()
                 .environment(store)
+                // 高級感が出るように、いつも暗い画面（ダークモード）で表示し、
+                // ボタンなどの強調する色を金色にします
+                .preferredColorScheme(.dark)
+                .tint(Theme.gold)
         }
     }
 }
