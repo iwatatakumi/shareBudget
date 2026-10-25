@@ -34,8 +34,8 @@ struct SplashView: View {
                         .font(.title2)
                         .foregroundStyle(Theme.goldGradient)
                         .shadow(color: Theme.gold.opacity(0.8), radius: 6)
-                        // 進む向きに機首を向けます
-                        .rotationEffect(.degrees(planeAngle + 90))
+                        // 輪に沿って進む向きに機首を向けます（外側の回転と合わせて、ちょうど進行方向になります）
+                        .rotationEffect(.degrees(90))
                         .offset(x: 70)
                         .rotationEffect(.degrees(planeAngle))
 
