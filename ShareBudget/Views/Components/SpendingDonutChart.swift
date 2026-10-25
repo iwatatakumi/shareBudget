@@ -37,22 +37,24 @@ struct SpendingDonutChart: View {
     var body: some View {
         VStack(spacing: 16) {
             Chart(slices) { slice in
+                // 細くシャープな輪にします（内側の半径 0.82、外側の半径 0.94）。
+                // なぞっている切れだけ、少し太く外に飛び出します。
                 SectorMark(
                     angle: .value("金額", slice.amount),
-                    innerRadius: .ratio(selectedSlice?.id == slice.id ? 0.58 : 0.64),
+                    innerRadius: .ratio(selectedSlice?.id == slice.id ? 0.78 : 0.82),
                     outerRadius: .ratio(selectedSlice?.id == slice.id ? 1.0 : 0.94),
-                    angularInset: 1.5
+                    angularInset: 2
                 )
-                .cornerRadius(4)
-                // 上が明るく下が暗いグラデーションで、ツヤのある色にします
-                .foregroundStyle(Theme.glossy(slice.color, startPoint: .topLeading, endPoint: .bottomTrailing))
+                .cornerRadius(2)
+                // 金属や宝石のように光を反射する、深みのある色にします
+                .foregroundStyle(Theme.metallic(slice.color))
                 .opacity(selectedSlice == nil || selectedSlice?.id == slice.id ? 1 : 0.35)
             }
             .chartAngleSelection(value: $selectedValue)
             .chartBackground { _ in
                 centerLabel
             }
-            // 輪の上半分に、光が反射しているような白いツヤを重ねます
+            // 輪の内側と外側の金色の細い線と、光が反射しているような白いツヤを重ねます
             .overlay { DonutGloss().allowsHitTesting(false) }
             // 輪の下に落ちる影と、ふんわり光る金色で、浮き上がって見せます
             .shadow(color: .black.opacity(0.5), radius: 10, y: 6)
@@ -94,7 +96,7 @@ struct SpendingDonutChart: View {
             ForEach(slices) { slice in
                 HStack(spacing: 8) {
                     Circle()
-                        .fill(Theme.glossy(slice.color))
+                        .fill(Theme.metallic(slice.color))
                         .frame(width: 12, height: 12)
                         .shadow(color: slice.color.opacity(0.7), radius: 3)
                     Text(slice.name)
@@ -119,25 +121,41 @@ struct SpendingDonutChart: View {
     }
 }
 
-// ドーナツの輪に重ねる「ツヤ」です。輪と同じ太さの輪を、上から下へ白→透明のグラデーションで塗ります。
+// ドーナツの輪に重ねる飾りです。
+// 輪の外側と内側に金色の細い線を引き、輪の上半分には光が反射しているような白いツヤを重ねます。
 private struct DonutGloss: View {
     var body: some View {
         GeometryReader { geometry in
-            // グラフの輪の大きさ（SectorMark の outerRadius 0.94 / innerRadius 0.64 に合わせます）
+            // グラフの輪の大きさ（SectorMark の outerRadius 0.94 / innerRadius 0.82 に合わせます）
             let radius = min(geometry.size.width, geometry.size.height) / 2
-            let outer = radius * 0.94
-            Circle()
-                .strokeBorder(
-                    LinearGradient(
-                        colors: [.white.opacity(0.35), .white.opacity(0.05), .clear],
-                        startPoint: .top,
-                        endPoint: .center
-                    ),
-                    lineWidth: radius * 0.30
-                )
-                .frame(width: outer * 2, height: outer * 2)
-                .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
-                .blendMode(.screen)
+            let center = CGPoint(x: geometry.size.width / 2, y: geometry.size.height / 2)
+            ZStack {
+                // 光のツヤ
+                Circle()
+                    .strokeBorder(
+                        LinearGradient(
+                            colors: [.white.opacity(0.4), .white.opacity(0.05), .clear],
+                            startPoint: .top,
+                            endPoint: .center
+                        ),
+                        lineWidth: radius * 0.12
+                    )
+                    .frame(width: radius * 1.88, height: radius * 1.88)
+                    .blendMode(.screen)
+
+                // 外側の金色の線
+                Circle()
+                    .stroke(Theme.goldRing, lineWidth: 1)
+                    .frame(width: radius * 2.0, height: radius * 2.0)
+                    .opacity(0.8)
+
+                // 内側の金色の線
+                Circle()
+                    .stroke(Theme.goldRing, lineWidth: 0.8)
+                    .frame(width: radius * 1.56, height: radius * 1.56)
+                    .opacity(0.6)
+            }
+            .position(center)
         }
     }
 }
