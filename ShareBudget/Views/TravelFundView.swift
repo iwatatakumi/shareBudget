@@ -6,6 +6,9 @@ struct TravelFundView: View {
     @Environment(BudgetStore.self) private var store
     /// true のとき、いまの旅行資金で行ける候補だけを表示します
     @State private var showsAffordableOnly = false
+    @State private var showsIncomeForm = false
+    // 削除してよいか確認中の臨時収入
+    @State private var incomeToDelete: Income?
 
     var body: some View {
         let fund = TravelFund(store: store)
@@ -20,6 +23,8 @@ struct TravelFundView: View {
                     FundTotalView(total: fund.total)
                 }
 
+                incomeSection
+
                 Section {
                     ForEach(fund.months) { month in
                         MonthlyFundRow(month: month)
@@ -27,7 +32,7 @@ struct TravelFundView: View {
                 } header: {
                     Text("月ごとの記録")
                 } footer: {
-                    Text("終わった月は「1か月の目標 − 使った額」、今月は「今日までの目標 − 使った額」です。過去の月も、いまの目標金額で計算しています。")
+                    Text("終わった月は「1か月の目標 − 使った額 ＋ 臨時収入」、今月は「今日までの目標 − 使った額 ＋ 臨時収入」です。過去の月も、いまの目標金額で計算しています。")
                 }
 
                 Section {
@@ -49,6 +54,67 @@ struct TravelFundView: View {
             .refreshable {
                 await store.reload()
             }
+            .sheet(isPresented: $showsIncomeForm) {
+                IncomeFormView()
+            }
+            .confirmationDialog(
+                "この臨時収入を削除しますか？",
+                isPresented: Binding(
+                    get: { incomeToDelete != nil },
+                    set: { if !$0 { incomeToDelete = nil } }
+                ),
+                titleVisibility: .visible,
+                presenting: incomeToDelete
+            ) { income in
+                Button("\(income.amount.yenText)を削除", role: .destructive) {
+                    Task { await store.deleteIncome(income) }
+                    incomeToDelete = nil
+                }
+            } message: { _ in
+                Text("旅行資金からも、その分が引かれます。")
+            }
+        }
+    }
+
+    // 臨時収入の一覧と、追加ボタンです。
+    private var incomeSection: some View {
+        Section {
+            Button {
+                showsIncomeForm = true
+            } label: {
+                Label("臨時収入を追加", systemImage: "plus.circle")
+            }
+            ForEach(store.incomes) { income in
+                IncomeRow(income: income, memberName: store.memberName(income.createdBy))
+            }
+            .onDelete { offsets in
+                incomeToDelete = offsets.first.map { store.incomes[$0] }
+            }
+        } header: {
+            Text("臨時収入")
+        } footer: {
+            Text("ボーナスやお祝いなど、入力した金額がそのまま旅行資金に足されます。左にスワイプすると削除できます。")
+        }
+    }
+}
+
+// 臨時収入1件ぶんの行です。
+private struct IncomeRow: View {
+    let income: Income
+    let memberName: String
+
+    var body: some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(income.memo.isEmpty ? "臨時収入" : income.memo)
+                Text("\(income.receivedOn.replacingOccurrences(of: "-", with: "/"))・\(memberName)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+            Text(income.amount.signedYenText)
+                .bold()
+                .foregroundStyle(Color.accentColor)
         }
     }
 }
@@ -83,7 +149,9 @@ private struct MonthlyFundRow: View {
                     .bold()
                     .foregroundStyle(month.fund >= 0 ? Color.primary : Color.red)
             }
-            Text("目標 \(month.target.yenText) ／ 使った額 \(month.spent.yenText)")
+            Text(month.income > 0
+                ? "目標 \(month.target.yenText) ／ 使った額 \(month.spent.yenText) ／ 臨時収入 \(month.income.yenText)"
+                : "目標 \(month.target.yenText) ／ 使った額 \(month.spent.yenText)")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }

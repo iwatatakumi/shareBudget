@@ -73,6 +73,17 @@ create table if not exists public.expense_shares (
   primary key (expense_id, user_id)
 );
 
+-- 臨時収入（ボーナスやお祝いなど。旅行資金に上乗せします）
+create table if not exists public.incomes (
+  id uuid primary key default gen_random_uuid(),
+  household_id uuid not null references public.households(id) on delete cascade,
+  amount int not null check (amount > 0),
+  received_on date not null,
+  memo text not null default '',
+  created_by uuid not null default auth.uid() references auth.users(id),
+  created_at timestamptz not null default now()
+);
+
 create index if not exists expenses_household_spent_on on public.expenses (household_id, spent_on);
 
 -- ========== 自分の家計簿を調べる関数 ==========
@@ -94,6 +105,7 @@ alter table public.expenses enable row level security;
 alter table public.expense_shares enable row level security;
 -- household_secrets は「読み書きしてよい条件」を1つも作らないので、アプリからは見えません。
 alter table public.household_secrets enable row level security;
+alter table public.incomes enable row level security;
 
 drop policy if exists "own household" on public.households;
 create policy "own household" on public.households
@@ -124,6 +136,11 @@ create policy "own expenses" on public.expenses
 
 drop policy if exists "own shares" on public.expense_shares;
 create policy "own shares" on public.expense_shares
+  for all using (household_id = public.my_household_id())
+  with check (household_id = public.my_household_id());
+
+drop policy if exists "own incomes" on public.incomes;
+create policy "own incomes" on public.incomes
   for all using (household_id = public.my_household_id())
   with check (household_id = public.my_household_id());
 

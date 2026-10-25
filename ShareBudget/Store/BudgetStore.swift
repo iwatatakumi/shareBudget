@@ -30,6 +30,8 @@ final class BudgetStore {
     var expenses: [Expense] = []
     /// 月ごとの支出の合計（"2026-10" → 金額）。旅行資金の記録に使います。
     var monthlySpent: [String: Int] = [:]
+    /// 臨時収入（新しい順）
+    var incomes: [Income] = []
     /// 画面に出すエラーの文章
     var errorMessage: String?
     /// つながらなかったときの、くわしいエラーの文章（つながらなかった画面に出します）
@@ -159,6 +161,12 @@ final class BudgetStore {
 
             let monthly: [MonthlySpent] = try await client.rpc("monthly_spent").execute().value
 
+            let incomes: [Income] = try await client
+                .from("incomes").select()
+                .order("received_on", ascending: false)
+                .order("created_at", ascending: false)
+                .execute().value
+            self.incomes = incomes
             self.monthlySpent = Dictionary(monthly.map { ($0.month, $0.total) }, uniquingKeysWith: +)
             self.household = households.first
             self.members = members.sorted { $0.userId == userId && $1.userId != userId }
@@ -209,6 +217,37 @@ final class BudgetStore {
             try await client.from("expenses").delete().eq("id", value: expense.id.uuidString).execute()
             await self.reload()
         }
+    }
+
+    // MARK: - 臨時収入
+
+    func addIncome(amount: Int, date: Date, memo: String) async -> Bool {
+        guard let client, let household else { return false }
+        return await run {
+            try await client
+                .from("incomes")
+                .insert(NewIncome(
+                    householdId: household.id,
+                    amount: amount,
+                    receivedOn: DayString.string(from: date),
+                    memo: memo
+                ))
+                .execute()
+            await self.reload()
+        }
+    }
+
+    func deleteIncome(_ income: Income) async {
+        guard let client else { return }
+        await run {
+            try await client.from("incomes").delete().eq("id", value: income.id.uuidString).execute()
+            await self.reload()
+        }
+    }
+
+    /// その月（"2026-10"）の臨時収入の合計
+    func incomeTotal(month: String) -> Int {
+        incomes.filter { $0.month == month }.reduce(0) { $0 + $1.amount }
     }
 
     // MARK: - 項目と目標金額
@@ -324,6 +363,7 @@ final class BudgetStore {
         targets = []
         expenses = []
         monthlySpent = [:]
+        incomes = []
     }
 }
 
@@ -338,6 +378,19 @@ private struct NewCategory: Encodable {
         case name
         case householdId = "household_id"
         case sortOrder = "sort_order"
+    }
+}
+
+private struct NewIncome: Encodable {
+    let householdId: UUID
+    let amount: Int
+    let receivedOn: String
+    let memo: String
+
+    enum CodingKeys: String, CodingKey {
+        case amount, memo
+        case householdId = "household_id"
+        case receivedOn = "received_on"
     }
 }
 

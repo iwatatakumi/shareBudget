@@ -108,6 +108,27 @@ struct Expense: Codable, Identifiable {
     }
 }
 
+/// 臨時収入（旅行資金に上乗せします）
+struct Income: Codable, Identifiable {
+    let id: UUID
+    let householdId: UUID
+    var amount: Int
+    /// 受け取った日（"2026-10-23" の形の文字）
+    var receivedOn: String
+    var memo: String
+    let createdBy: UUID
+
+    enum CodingKeys: String, CodingKey {
+        case id, amount, memo
+        case householdId = "household_id"
+        case receivedOn = "received_on"
+        case createdBy = "created_by"
+    }
+
+    /// 受け取った月（"2026-10" の形の文字）
+    var month: String { String(receivedOn.prefix(7)) }
+}
+
 /// 日付と "2026-10-23" の形の文字を変換します。
 enum DayString {
     private static let formatter: DateFormatter = {

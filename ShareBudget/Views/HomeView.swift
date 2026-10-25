@@ -26,13 +26,9 @@ struct HomeView: View {
                     }
                 }
 
-                Section("項目ごと") {
+                Section("項目ごと（人ごと）") {
                     ForEach(summary.categories) { item in
-                        CategoryProgressRow(
-                            item: item,
-                            daily: summary.daily,
-                            showsMembers: store.members.count > 1
-                        )
+                        CategoryProgressRow(item: item, daily: summary.daily)
                     }
                     if summary.uncategorizedSpent > 0 {
                         HStack {
@@ -93,6 +89,12 @@ private struct MonthOverview: View {
             }
             .font(.callout.bold())
             .foregroundStyle(summary.projectedTravelFund >= 0 ? Color.accentColor : Color.red)
+
+            if summary.extraIncome > 0 {
+                Text("今月の臨時収入 \(summary.extraIncome.signedYenText) を含みます")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
         }
         .padding(.vertical, 4)
     }
@@ -119,7 +121,7 @@ private struct DailyOverview: View {
             HStack {
                 Text("今日（\(summary.daily.today)日）までの目標 \(summary.targetUntilToday.yenText)")
                 Spacer()
-                DifferenceText(difference: summary.projectedTravelFund)
+                DifferenceText(difference: summary.targetUntilToday - summary.totalSpent)
             }
             .font(.caption)
         }
@@ -177,41 +179,36 @@ private struct DifferenceText: View {
     }
 }
 
-// 項目1つぶんの行です。使った割合をバーで表示し、その下に人ごとの内訳を出します。
+// 項目1つぶんの行です。人ごとに、使った割合のバーと「使った額 ／ 目標」を出します。
 private struct CategoryProgressRow: View {
     let item: CategorySummary
     let daily: DailyBudget
-    let showsMembers: Bool
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                Text(item.name)
-                    .font(.headline)
-                Spacer()
-                DifferenceText(difference: item.remaining)
-            }
+        VStack(alignment: .leading, spacing: 8) {
+            Text(item.name)
+                .font(.headline)
 
-            // バーの長さ = 使った額 ÷ 目標金額（目標を超えたら満タン）
-            ProgressView(
-                value: Double(min(item.spent, max(item.target, 1))),
-                total: Double(max(item.target, 1))
-            )
-            .tint(item.isOver ? .red : .accentColor)
-
-            Text("使った額 \(item.spent.yenText) ／ 目標 \(item.target.yenText)（1日 \(daily.perDay(item.target).yenText)）")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-
-            if showsMembers {
-                ForEach(item.members) { member in
+            ForEach(item.members) { member in
+                VStack(alignment: .leading, spacing: 4) {
                     HStack {
-                        Text("・\(member.name)：\(member.spent.yenText) ／ \(member.target.yenText)")
+                        Text(member.name)
+                            .font(.subheadline)
                         Spacer()
                         DifferenceText(difference: member.difference)
+                            .font(.subheadline)
                     }
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+
+                    // バーの長さ = 使った額 ÷ 目標金額（目標を超えたら満タン）
+                    ProgressView(
+                        value: Double(min(member.spent, max(member.target, 1))),
+                        total: Double(max(member.target, 1))
+                    )
+                    .tint(member.spent > member.target ? .red : .accentColor)
+
+                    Text("使った額 \(member.spent.yenText) ／ 目標 \(member.target.yenText)（1日 \(daily.perDay(member.target).yenText)）")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
             }
         }
