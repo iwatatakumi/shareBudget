@@ -4,16 +4,17 @@ import UIKit
 // アプリ全体の色をまとめたものです。
 // アプリは高級感が出るように、いつも暗い画面（ダークモード）で表示します。
 enum Theme {
-    /// 項目に順番に割り当てる8色（目の色の感じ方が違う人にも区別しやすい並び）
+    /// 項目に順番に割り当てる8色。宝石や金属のような、深みのある色です。
+    /// 隣どうしの色は、目の色の感じ方が違う人にも区別しやすい並びにしています。
     private static let categoryPalette: [(light: UInt32, dark: UInt32)] = [
-        (0x2A78D6, 0x3987E5), // 青
-        (0xEB6834, 0xD95926), // オレンジ
-        (0x1BAF7A, 0x199E70), // 水色がかった緑
-        (0xEDA100, 0xC98500), // 黄
-        (0xE87BA4, 0xD55181), // ピンク
-        (0x008300, 0x008300), // 緑
-        (0x6250D6, 0x9085E9), // 紫
-        (0xE34948, 0xE66767), // 赤
+        (0x3A6FD8, 0x3A6FD8), // サファイア（青）
+        (0xC0703A, 0xC0703A), // カッパー（銅色）
+        (0x1E9E74, 0x1E9E74), // エメラルド（緑）
+        (0x8A63D2, 0x8A63D2), // アメジスト（紫）
+        (0xB08A38, 0xB08A38), // ゴールド（金色）
+        (0xC2416A, 0xC2416A), // ルビー（赤）
+        (0x2A9BB0, 0x2A9BB0), // アクアマリン（青緑）
+        (0xD35F8C, 0xD35F8C), // ローズ（ピンク）
     ]
 
     /// 9個目以降の項目や「項目なし」に使う灰色
@@ -62,6 +63,23 @@ enum Theme {
 
     /// 一覧の1行ぶんの背景（うしろが少し透けて見える、すりガラスのような色）
     static let glassRow = Color.white.opacity(0.07)
+
+    /// 金属のような光沢を出したグラデーション。
+    /// 明るい所と暗い所を交互に並べると、光を反射する金属や宝石のように見えます。
+    static func metallic(_ color: Color) -> LinearGradient {
+        let base = UIColor(color).resolvedColor(with: UITraitCollection(userInterfaceStyle: .dark))
+        return LinearGradient(
+            stops: [
+                .init(color: Color(base.mixed(with: .white, amount: 0.5)), location: 0),
+                .init(color: Color(base), location: 0.35),
+                .init(color: Color(base.mixed(with: .black, amount: 0.35)), location: 0.6),
+                .init(color: Color(base.mixed(with: .white, amount: 0.2)), location: 0.85),
+                .init(color: Color(base.mixed(with: .black, amount: 0.2)), location: 1),
+            ],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    }
 
     /// 色に「ツヤ」を出したグラデーション。
     /// 上を白っぽく（光が当たっている所）、下を少し暗く（影）すると、立体的でツヤがあるように見えます。
