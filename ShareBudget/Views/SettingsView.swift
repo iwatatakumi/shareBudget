@@ -89,7 +89,10 @@ struct SettingsView: View {
                 NavigationLink {
                     CategoryEditView(category: category)
                 } label: {
-                    HStack {
+                    HStack(spacing: 10) {
+                        Circle()
+                            .fill(store.categoryColor(category.id))
+                            .frame(width: 10, height: 10)
                         Text(category.name)
                         Spacer()
                         Text(totalTarget(of: category).yenText)

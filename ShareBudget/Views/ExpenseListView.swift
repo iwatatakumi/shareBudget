@@ -86,7 +86,11 @@ struct ExpenseRow: View {
     }
 
     var body: some View {
-        HStack {
+        HStack(spacing: 12) {
+            CategoryBadge(
+                name: store.categoryName(expense.categoryId),
+                color: store.categoryColor(expense.categoryId)
+            )
             VStack(alignment: .leading, spacing: 2) {
                 Text(store.categoryName(expense.categoryId))
                     .font(.headline)
