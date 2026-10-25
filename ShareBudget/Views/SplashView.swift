@@ -70,7 +70,7 @@ struct SplashView: View {
                         }
                         .shadow(color: Theme.gold.opacity(0.5), radius: 10)
 
-                    Text("ふたりで貯める、旅行資金")
+                    Text("家計簿共有アプリ")
                         .font(.subheadline)
                         .tracking(4)
                         .foregroundStyle(.white.opacity(0.75))
