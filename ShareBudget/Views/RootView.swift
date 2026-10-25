@@ -11,6 +11,7 @@ struct RootView: View {
                 NotConfiguredView()
             case .loading:
                 ProgressView("読み込み中…")
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             case .connectionFailed:
                 ConnectionFailedView()
             case .needsHousehold:
@@ -19,6 +20,7 @@ struct RootView: View {
                 MainTabView()
             }
         }
+        .background(LuxuryBackground())
         .task {
             await store.start()
         }
@@ -68,6 +70,7 @@ private struct ConnectionFailedView: View {
                 Task { await store.start() }
             }
             .buttonStyle(.borderedProminent)
+            .foregroundStyle(.black)
         }
     }
 }

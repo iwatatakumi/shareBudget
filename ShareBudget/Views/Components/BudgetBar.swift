@@ -24,7 +24,8 @@ struct BudgetBar: View {
             ZStack(alignment: .leading) {
                 // 目標金額の枠（残りの部分は、旅行資金になる分）
                 Capsule()
-                    .fill(color.opacity(0.15))
+                    .fill(color.opacity(0.18))
+                    .overlay(Capsule().strokeBorder(.white.opacity(0.08), lineWidth: 0.5))
 
                 // 使った額の帯
                 Capsule()
@@ -35,10 +36,18 @@ struct BudgetBar: View {
                             endPoint: .trailing
                         )
                     )
+                    // 上半分に白いツヤを重ねて、ガラス玉のような光沢を出します
+                    .overlay(
+                        Capsule()
+                            .fill(LinearGradient(colors: [.white.opacity(0.5), .clear], startPoint: .top, endPoint: .center))
+                            .padding(.horizontal, 3)
+                            .padding(.top, 1)
+                    )
+                    .shadow(color: (isOver ? Color.red : color).opacity(0.6), radius: 4)
                     .frame(width: max(appeared ? geometry.size.width * ratio : 0, ratio > 0 ? 8 : 0))
             }
         }
-        .frame(height: 10)
+        .frame(height: 12)
         .animation(.spring(duration: 0.8), value: appeared)
         .animation(.spring(duration: 0.5), value: ratio)
         .onAppear { appeared = true }

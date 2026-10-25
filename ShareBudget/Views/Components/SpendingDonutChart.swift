@@ -44,13 +44,19 @@ struct SpendingDonutChart: View {
                     angularInset: 1.5
                 )
                 .cornerRadius(4)
-                .foregroundStyle(slice.color)
+                // 上が明るく下が暗いグラデーションで、ツヤのある色にします
+                .foregroundStyle(Theme.glossy(slice.color, startPoint: .topLeading, endPoint: .bottomTrailing))
                 .opacity(selectedSlice == nil || selectedSlice?.id == slice.id ? 1 : 0.35)
             }
             .chartAngleSelection(value: $selectedValue)
             .chartBackground { _ in
                 centerLabel
             }
+            // 輪の上半分に、光が反射しているような白いツヤを重ねます
+            .overlay { DonutGloss().allowsHitTesting(false) }
+            // 輪の下に落ちる影と、ふんわり光る金色で、浮き上がって見せます
+            .shadow(color: .black.opacity(0.5), radius: 10, y: 6)
+            .shadow(color: Theme.gold.opacity(0.18), radius: 16)
             .frame(height: 220)
             .scaleEffect(appeared ? 1 : 0.7)
             .opacity(appeared ? 1 : 0)
@@ -72,6 +78,7 @@ struct SpendingDonutChart: View {
                 .foregroundStyle(.secondary)
             Text((selectedSlice?.amount ?? total).yenText)
                 .font(.title3.bold())
+                .foregroundStyle(Theme.goldGradient)
                 .contentTransition(.numericText())
             if let slice = selectedSlice, total > 0 {
                 Text(percentText(slice.amount))
@@ -87,8 +94,9 @@ struct SpendingDonutChart: View {
             ForEach(slices) { slice in
                 HStack(spacing: 8) {
                     Circle()
-                        .fill(slice.color)
-                        .frame(width: 10, height: 10)
+                        .fill(Theme.glossy(slice.color))
+                        .frame(width: 12, height: 12)
+                        .shadow(color: slice.color.opacity(0.7), radius: 3)
                     Text(slice.name)
                         .font(.subheadline)
                     Spacer()
@@ -108,5 +116,28 @@ struct SpendingDonutChart: View {
     private func percentText(_ amount: Int) -> String {
         guard total > 0 else { return "0%" }
         return "\(Int((Double(amount) / Double(total) * 100).rounded()))%"
+    }
+}
+
+// ドーナツの輪に重ねる「ツヤ」です。輪と同じ太さの輪を、上から下へ白→透明のグラデーションで塗ります。
+private struct DonutGloss: View {
+    var body: some View {
+        GeometryReader { geometry in
+            // グラフの輪の大きさ（SectorMark の outerRadius 0.94 / innerRadius 0.64 に合わせます）
+            let radius = min(geometry.size.width, geometry.size.height) / 2
+            let outer = radius * 0.94
+            Circle()
+                .strokeBorder(
+                    LinearGradient(
+                        colors: [.white.opacity(0.35), .white.opacity(0.05), .clear],
+                        startPoint: .top,
+                        endPoint: .center
+                    ),
+                    lineWidth: radius * 0.30
+                )
+                .frame(width: outer * 2, height: outer * 2)
+                .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
+                .blendMode(.screen)
+        }
     }
 }

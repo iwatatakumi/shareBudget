@@ -18,6 +18,8 @@ struct RingProgress<Label: View>: View {
                 .trim(from: 0, to: appeared ? min(max(progress, 0), 1) : 0)
                 .stroke(gradient, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
                 .rotationEffect(.degrees(-90))
+                // 輪がぼんやり光って見えるようにします
+                .shadow(color: Theme.gold.opacity(0.45), radius: 5)
             label()
         }
         .animation(.spring(duration: 1.0), value: appeared)
@@ -27,9 +29,9 @@ struct RingProgress<Label: View>: View {
 }
 
 extension AngularGradient {
-    /// 旅行資金の輪の色（水色から青、紫へ）
+    /// 旅行資金の輪の色（エメラルド、サファイア、アメジスト、金色の宝石のような色）
     static let travel = AngularGradient(
-        colors: [Color(hex: 0x1BAF7A), Color(hex: 0x2A78D6), Color(hex: 0x6250D6), Color(hex: 0x1BAF7A)],
+        colors: [Color(hex: 0x199E70), Color(hex: 0x3987E5), Color(hex: 0x9085E9), Color(hex: 0xE8C36A), Color(hex: 0x199E70)],
         center: .center
     )
 }

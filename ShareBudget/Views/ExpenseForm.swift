@@ -65,7 +65,7 @@ struct ExpenseForm: View {
     }
 
     var body: some View {
-        Form {
+        LuxuryForm {
             Section("金額") {
                 HStack {
                     TextField("0", text: $amountText)

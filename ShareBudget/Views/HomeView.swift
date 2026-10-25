@@ -14,68 +14,73 @@ struct HomeView: View {
                 Section {
                     HeroCard(summary: summary)
                         .listRowInsets(EdgeInsets())
-                        .listRowBackground(Theme.heroGradient)
+                        .listRowBackground(GlossyCardBackground(gradient: Theme.heroGradient))
                 }
 
-                if summary.totalTarget > 0 {
-                    Section("今日のペース") {
-                        DailyOverview(summary: summary)
-                    }
-                }
-
-                Section("支出の割合") {
-                    if summary.totalSpent > 0 {
-                        SpendingDonutChart(slices: donutSlices(summary))
-                    } else {
-                        Label("今月の支出を入力すると、ここにグラフが出ます。", systemImage: "chart.pie")
-                            .font(.callout)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-
-                if store.members.count > 1 {
-                    Section {
-                        ForEach(summary.members) { member in
-                            MemberRow(member: member)
+                // ここから下の行は、すりガラスのような背景にします
+                Group {
+                    if summary.totalTarget > 0 {
+                        Section("今日のペース") {
+                            DailyOverview(summary: summary)
                         }
-                    } header: {
-                        Text("メンバーごと")
-                    } footer: {
-                        Text("使った額は、支出のうちその人が負担する分（配分）の合計です。")
                     }
-                }
 
-                Section {
-                    ForEach(Array(summary.categories.enumerated()), id: \.element.id) { index, item in
-                        CategoryProgressRow(
-                            item: item,
-                            daily: summary.daily,
-                            color: Theme.categoryColor(index: index)
-                        )
-                    }
-                    if summary.uncategorizedSpent > 0 {
-                        HStack {
-                            Circle().fill(Theme.otherColor).frame(width: 10, height: 10)
-                            Text("項目なし")
-                            Spacer()
-                            Text(summary.uncategorizedSpent.yenText)
+                    Section("支出の割合") {
+                        if summary.totalSpent > 0 {
+                            SpendingDonutChart(slices: donutSlices(summary))
+                        } else {
+                            Label("今月の支出を入力すると、ここにグラフが出ます。", systemImage: "chart.pie")
+                                .font(.callout)
                                 .foregroundStyle(.secondary)
                         }
                     }
-                } header: {
-                    Text("項目ごと（人ごと）")
-                } footer: {
-                    Text("バーの枠が目標、色の帯が使った額です。薄い部分が残りで、月末まで残れば旅行資金になります。")
-                }
 
-                if summary.totalTarget == 0 {
+                    if store.members.count > 1 {
+                        Section {
+                            ForEach(summary.members) { member in
+                                MemberRow(member: member)
+                            }
+                        } header: {
+                            Text("メンバーごと")
+                        } footer: {
+                            Text("使った額は、支出のうちその人が負担する分（配分）の合計です。")
+                        }
+                    }
+
                     Section {
-                        Text("「設定」タブで項目ごとの目標金額を決めると、残りと旅行資金が計算されます。")
-                            .font(.callout)
-                            .foregroundStyle(.secondary)
+                        ForEach(Array(summary.categories.enumerated()), id: \.element.id) { index, item in
+                            CategoryProgressRow(
+                                item: item,
+                                daily: summary.daily,
+                                color: Theme.categoryColor(index: index)
+                            )
+                        }
+                        if summary.uncategorizedSpent > 0 {
+                            HStack {
+                                Circle().fill(Theme.otherColor).frame(width: 10, height: 10)
+                                Text("項目なし")
+                                Spacer()
+                                Text(summary.uncategorizedSpent.yenText)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    } header: {
+                        Text("項目ごと（人ごと）")
+                    } footer: {
+                        Text("バーの枠が目標、色の帯が使った額です。薄い部分が残りで、月末まで残れば旅行資金になります。")
+                    }
+
+                    if summary.totalTarget == 0 {
+                        Section {
+                            Text("「設定」タブで項目ごとの目標金額を決めると、残りと旅行資金が計算されます。")
+                                .font(.callout)
+                                .foregroundStyle(.secondary)
+                        }
                     }
                 }
+                .listRowBackground(Theme.glassRow)
             }
+            .luxuryBackground()
             .navigationTitle(Date().formatted(.dateTime.month(.wide)) + "の家計簿")
             // 下に引っぱると、ルームメイトが入力した支出も読み込み直します。
             .refreshable {
@@ -122,6 +127,9 @@ private struct HeroCard: View {
                     .opacity(0.85)
                 Text((appeared ? abs(summary.totalRemaining) : 0).yenText)
                     .font(.system(size: 40, weight: .bold, design: .rounded))
+                    // 金色の、光沢のある文字にします
+                    .foregroundStyle(Theme.goldGradient)
+                    .shadow(color: Theme.gold.opacity(0.5), radius: 8)
                     .contentTransition(.numericText())
                     .monospacedDigit()
             }
@@ -131,8 +139,9 @@ private struct HeroCard: View {
                 ZStack(alignment: .leading) {
                     Capsule().fill(.white.opacity(0.25))
                     Capsule()
-                        .fill(summary.totalRemaining >= 0 ? Color.white : Color.orange)
+                        .fill(summary.totalRemaining >= 0 ? Theme.goldGradient : Theme.glossy(.orange))
                         .frame(width: geometry.size.width * (appeared ? spentRatio : 0))
+                        .shadow(color: Theme.gold.opacity(0.6), radius: 4)
                 }
             }
             .frame(height: 8)
@@ -206,7 +215,7 @@ private struct DailyOverview: View {
                         ? Double(summary.todaySpent) / Double(summary.dailyTarget)
                         : 0,
                     lineWidth: 8,
-                    gradient: .travel
+                    gradient: Theme.goldRing
                 ) {
                     VStack(spacing: 0) {
                         Text("今日")
@@ -295,8 +304,9 @@ private struct CategoryProgressRow: View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 8) {
                 Circle()
-                    .fill(color)
-                    .frame(width: 10, height: 10)
+                    .fill(Theme.glossy(color))
+                    .frame(width: 12, height: 12)
+                    .shadow(color: color.opacity(0.7), radius: 3)
                 Text(item.name)
                     .font(.headline)
             }

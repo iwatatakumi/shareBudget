@@ -10,7 +10,7 @@ struct ExpenseListView: View {
 
     var body: some View {
         NavigationStack {
-            List {
+            LuxuryList {
                 if store.expenses.isEmpty {
                     ContentUnavailableView(
                         "今月の支出はまだありません",

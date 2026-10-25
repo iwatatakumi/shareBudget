@@ -32,6 +32,7 @@ struct MonthlyFundChart: View {
                         .font(.headline)
                         .monospacedDigit()
                         .contentTransition(.numericText())
+                        .foregroundStyle(Theme.goldGradient)
                 }
             }
 
@@ -43,7 +44,7 @@ struct MonthlyFundChart: View {
                         width: .ratio(0.6)
                     )
                     .cornerRadius(4)
-                    .foregroundStyle(month.fund >= 0 ? Theme.positive : Theme.negative)
+                    .foregroundStyle(Theme.glossy(month.fund >= 0 ? Theme.positive : Theme.negative, startPoint: .leading, endPoint: .trailing))
                     .opacity(selectedMonth == nil || selectedMonth == month.month ? 1 : 0.4)
                 }
 
@@ -71,6 +72,7 @@ struct MonthlyFundChart: View {
                 }
             }
             .chartXSelection(value: $selectedMonth)
+            .shadow(color: .black.opacity(0.4), radius: 6, y: 4)
             .frame(height: 180)
             .animation(.spring(duration: 0.8), value: appeared)
             .onAppear { appeared = true }

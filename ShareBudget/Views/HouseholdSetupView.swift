@@ -16,7 +16,7 @@ struct HouseholdSetupView: View {
 
     var body: some View {
         NavigationStack {
-            Form {
+            LuxuryForm {
                 Section {
                     TextField("例: たくみ", text: $displayName)
                 } header: {
