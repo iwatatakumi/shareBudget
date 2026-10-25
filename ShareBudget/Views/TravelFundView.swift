@@ -13,19 +13,23 @@ struct TravelFundView: View {
     var body: some View {
         let fund = TravelFund(store: store)
         let people = max(store.members.count, 1)
-        let ideas = TravelIdea.samples
-            .filter { !showsAffordableOnly || $0.costPerPerson * people <= fund.total }
-            .sorted { $0.costPerPerson < $1.costPerPerson }
+        let sortedIdeas = TravelIdea.samples.sorted { $0.costPerPerson < $1.costPerPerson }
+        let ideas = sortedIdeas.filter { !showsAffordableOnly || $0.costPerPerson * people <= fund.total }
+        // 次の目標: まだ届いていない候補のうち、一番安いもの
+        let nextGoal = sortedIdeas.first { $0.costPerPerson * people > fund.total }
 
         NavigationStack {
             List {
                 Section {
-                    FundTotalView(total: fund.total)
+                    FundHeroCard(total: fund.total, nextGoal: nextGoal, people: people)
+                        .listRowInsets(EdgeInsets())
+                        .listRowBackground(Theme.travelGradient)
                 }
 
                 incomeSection
 
                 Section {
+                    MonthlyFundChart(months: fund.months)
                     ForEach(fund.months) { month in
                         MonthlyFundRow(month: month)
                     }
@@ -119,20 +123,68 @@ private struct IncomeRow: View {
     }
 }
 
-// 貯まった旅行資金の合計です。
-private struct FundTotalView: View {
+// 画面上部の、グラデーションの大きなカードです。
+// 貯まった旅行資金の合計と、次の目標（まだ届いていない一番安い旅行先）までの進み具合を輪で出します。
+private struct FundHeroCard: View {
     let total: Int
+    let nextGoal: TravelIdea?
+    let people: Int
+
+    @State private var appeared = false
+    /// 飛行機がふわふわ浮かぶアニメーション用
+    @State private var floating = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text("貯まった旅行資金")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-            Text(total.signedYenText)
-                .font(.largeTitle.bold())
-                .foregroundStyle(total >= 0 ? Color.accentColor : Color.red)
+        HStack(alignment: .center, spacing: 16) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("貯まった旅行資金")
+                    .font(.subheadline)
+                    .opacity(0.85)
+                Text((appeared ? total : 0).signedYenText)
+                    .font(.system(size: 34, weight: .bold, design: .rounded))
+                    .contentTransition(.numericText())
+                    .monospacedDigit()
+                    .minimumScaleFactor(0.6)
+                    .lineLimit(1)
+                if let nextGoal {
+                    let cost = nextGoal.costPerPerson * people
+                    Text("次の目標: \(nextGoal.city)（\(people)人で約\(cost.yenText)）")
+                        .font(.caption)
+                        .opacity(0.9)
+                    Text("あと\(max(cost - total, 0).yenText)")
+                        .font(.headline)
+                } else {
+                    Text("候補の旅行先すべてに行けます！")
+                        .font(.headline)
+                }
+            }
+
+            Spacer(minLength: 0)
+
+            RingProgress(
+                progress: goalProgress,
+                lineWidth: 10,
+                gradient: AngularGradient(colors: [.white.opacity(0.6), .white], center: .center)
+            ) {
+                Image(systemName: "airplane")
+                    .font(.title2)
+                    .offset(y: floating ? -4 : 4)
+            }
+            .frame(width: 84, height: 84)
         }
-        .padding(.vertical, 4)
+        .foregroundStyle(.white)
+        .padding(20)
+        .onAppear {
+            withAnimation(.spring(duration: 1.0)) { appeared = true }
+            withAnimation(.easeInOut(duration: 1.6).repeatForever(autoreverses: true)) { floating = true }
+        }
+    }
+
+    /// 次の目標までの進み具合（0〜1）。すべて行けるときは満タン。
+    private var goalProgress: Double {
+        guard let nextGoal else { return 1 }
+        let cost = Double(nextGoal.costPerPerson * people)
+        return cost > 0 ? max(Double(total), 0) / cost : 0
     }
 }
 
@@ -167,6 +219,11 @@ private struct TravelIdeaRow: View {
     private var totalCost: Int { idea.costPerPerson * people }
     private var shortage: Int { totalCost - fund }
 
+    private var percentText: String {
+        guard totalCost > 0 else { return "-" }
+        return "\(min(Int((max(Double(fund), 0) / Double(totalCost) * 100).rounded()), 999))%"
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(alignment: .firstTextBaseline) {
@@ -194,24 +251,33 @@ private struct TravelIdeaRow: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
-            // バーの長さ = 貯まった旅行資金 ÷ 必要な費用
-            ProgressView(
-                value: Double(min(max(fund, 0), max(totalCost, 1))),
-                total: Double(max(totalCost, 1))
-            )
+            HStack(spacing: 12) {
+                // 輪 = 貯まった旅行資金 ÷ 必要な費用
+                RingProgress(
+                    progress: totalCost > 0 ? max(Double(fund), 0) / Double(totalCost) : 0,
+                    lineWidth: 6,
+                    gradient: .travel
+                ) {
+                    Text(percentText)
+                        .font(.caption2.bold())
+                        .monospacedDigit()
+                }
+                .frame(width: 48, height: 48)
 
-            HStack {
-                Text("\(people)人で約\(totalCost.yenText)")
-                Spacer()
-                if shortage <= 0 {
-                    Text("いまの旅行資金で行けます")
-                        .foregroundStyle(Color.accentColor)
-                        .bold()
-                } else {
-                    Text("あと\(shortage.yenText)")
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("\(people)人で約\(totalCost.yenText)")
+                        .font(.subheadline)
+                    if shortage <= 0 {
+                        Label("いまの旅行資金で行けます", systemImage: "checkmark.seal.fill")
+                            .font(.subheadline.bold())
+                            .foregroundStyle(Theme.positive)
+                    } else {
+                        Text("あと\(shortage.yenText)")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
                 }
             }
-            .font(.subheadline)
 
             // Safari でGoogleフライトを開きます（無料で、最新の値段を調べられます）
             if let url = idea.flightSearchURL {
