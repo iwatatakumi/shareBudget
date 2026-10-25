@@ -3,6 +3,8 @@ import SwiftUI
 // ログインしているか、家計簿に参加しているかで、最初に出す画面を切り替えます。
 struct RootView: View {
     @Environment(BudgetStore.self) private var store
+    /// 起動時のタイトル演出（SplashView）を出しているか
+    @State private var showsSplash = true
 
     var body: some View {
         Group {
@@ -21,8 +23,22 @@ struct RootView: View {
             }
         }
         .background(LuxuryBackground())
+        // 起動時のタイトル演出を、いちばん上に重ねて出します
+        .overlay {
+            if showsSplash {
+                SplashView()
+                    .transition(.opacity.combined(with: .scale(scale: 1.08)))
+            }
+        }
         .task {
             await store.start()
+        }
+        .task {
+            // 演出を最後まで見せるため、2.4秒待ってから消します（その間に裏でデータを読み込みます）
+            try? await Task.sleep(for: .seconds(2.4))
+            withAnimation(.easeInOut(duration: 0.6)) {
+                showsSplash = false
+            }
         }
         .alert(
             "うまくいきませんでした",
