@@ -26,6 +26,8 @@ struct CategorySummary: Identifiable {
 
     var id: UUID { category.id }
     var name: String { category.name }
+    /// 月に1回まとめて払う項目（家賃・光熱費など）か
+    var isMonthly: Bool { category.isMonthly }
     /// 残り（マイナスなら目標オーバー）
     var remaining: Int { target - spent }
     var isOver: Bool { spent > target }
@@ -60,7 +62,7 @@ struct MonthlySummary {
     let members: [MemberSummary]
     /// 項目なしの支出の合計
     let uncategorizedSpent: Int
-    /// 今日の支出の合計
+    /// 今日の支出の合計（月払いの項目は含めません）
     let todaySpent: Int
     /// 今月の臨時収入の合計
     let extraIncome: Int
@@ -72,7 +74,15 @@ struct MonthlySummary {
         daily = DailyBudget(now: now)
         let todayString = DayString.string(from: now)
         extraIncome = store.incomeTotal(month: String(todayString.prefix(7)))
-        todaySpent = expenses.filter { $0.spentOn == todayString }.reduce(0) { $0 + $1.amount }
+        // 家賃など月払いの項目は、払った日だけ大きくなるので「今日の支出」に含めません
+        let monthlyIds = Set(store.categories.filter(\.isMonthly).map(\.id))
+        todaySpent = expenses
+            .filter { expense in
+                guard expense.spentOn == todayString else { return false }
+                guard let categoryId = expense.categoryId else { return true }
+                return !monthlyIds.contains(categoryId)
+            }
+            .reduce(0) { $0 + $1.amount }
 
         categories = store.categories.map { category in
             let inCategory = expenses.filter { $0.categoryId == category.id }
@@ -113,14 +123,24 @@ struct MonthlySummary {
         categories.reduce(uncategorizedSpent) { $0 + $1.spent }
     }
 
-    /// 1日あたりの目標（全項目の合計を日割り）
-    var dailyTarget: Int {
-        daily.perDay(totalTarget)
+    /// 日割りする項目（月払いでない項目）の目標の合計
+    var dailyCategoriesTarget: Int {
+        categories.filter { !$0.isMonthly }.reduce(0) { $0 + $1.target }
     }
 
-    /// 今日までに使ってよい金額（項目ごとに日割りした額の合計）
+    /// 1日あたりの目標（月払いでない項目の合計を日割り）
+    var dailyTarget: Int {
+        daily.perDay(dailyCategoriesTarget)
+    }
+
+    /// 今日までに使ってよい金額。
+    /// ・ふつうの項目は、月の目標を今日までの日数で日割りした額。
+    /// ・月払いの項目は、払った額と同じ（目標以内なら差は0）。目標を超えたときだけ、超えた分がマイナスになります。
+    ///   月払いの項目の残りは、月が終わってから旅行資金に入ります。
     var targetUntilToday: Int {
-        categories.reduce(0) { $0 + daily.untilToday($1.target) }
+        categories.reduce(0) { total, item in
+            total + (item.isMonthly ? min(item.spent, item.target) : daily.untilToday(item.target))
+        }
     }
 
     /// 今月の残り（マイナスなら目標オーバー）

@@ -246,7 +246,9 @@ private struct DailyOverview: View {
                 DifferenceText(difference: summary.targetUntilToday - summary.totalSpent)
             }
             .font(.caption)
-            Text("目標の合計 \(summary.totalTarget.yenText) ÷ \(summary.daily.daysInMonth)日")
+            Text(summary.dailyCategoriesTarget == summary.totalTarget
+                ? "目標の合計 \(summary.dailyCategoriesTarget.yenText) ÷ \(summary.daily.daysInMonth)日"
+                : "月払いの項目を除いた目標 \(summary.dailyCategoriesTarget.yenText) ÷ \(summary.daily.daysInMonth)日")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
@@ -280,6 +282,18 @@ private struct MemberRow: View {
     }
 }
 
+// 月払いの項目に付ける、小さな「月払い」の印です。
+struct MonthlyBadge: View {
+    var body: some View {
+        Text("月払い")
+            .font(.caption2.bold())
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
+            .foregroundStyle(Theme.gold)
+            .overlay(Capsule().strokeBorder(Theme.gold.opacity(0.7), lineWidth: 1))
+    }
+}
+
 // 目標との差を「残り 〇円」または「〇円オーバー」と表示します。
 private struct DifferenceText: View {
     let difference: Int
@@ -309,6 +323,9 @@ private struct CategoryProgressRow: View {
                     .shadow(color: color.opacity(0.7), radius: 3)
                 Text(item.name)
                     .font(.headline)
+                if item.isMonthly {
+                    MonthlyBadge()
+                }
             }
 
             ForEach(item.members) { member in
@@ -324,7 +341,9 @@ private struct CategoryProgressRow: View {
                     BudgetBar(spent: member.spent, target: member.target, color: color)
 
                     HStack {
-                        Text("使った額 \(member.spent.yenText) ／ 目標 \(member.target.yenText)（1日 \(daily.perDay(member.target).yenText)）")
+                        Text(item.isMonthly
+                            ? "使った額 \(member.spent.yenText) ／ 目標 \(member.target.yenText)（月払い）"
+                            : "使った額 \(member.spent.yenText) ／ 目標 \(member.target.yenText)（1日 \(daily.perDay(member.target).yenText)）")
                         Spacer()
                         if member.difference > 0 {
                             Label(member.difference.signedYenText, systemImage: "airplane")

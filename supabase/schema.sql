@@ -43,6 +43,11 @@ create table if not exists public.categories (
   sort_order int not null default 0
 );
 
+-- 月に1回まとめて払う項目（家賃・光熱費など）かどうか。
+-- オンの項目は日割りせず、払った日に「今日の支出」がオーバーにならないようにします。
+alter table public.categories
+  add column if not exists is_monthly boolean not null default false;
+
 -- 人ごと・項目ごとの1か月の目標金額
 create table if not exists public.member_targets (
   category_id uuid not null references public.categories(id) on delete cascade,
@@ -183,8 +188,8 @@ begin
     values (h.id, extensions.crypt(p_password, extensions.gen_salt('bf')));
   insert into public.members (household_id, user_id, display_name)
     values (h.id, auth.uid(), p_display_name);
-  insert into public.categories (household_id, name, sort_order)
-    select h.id, name, ord - 1
+  insert into public.categories (household_id, name, sort_order, is_monthly)
+    select h.id, name, ord - 1, name = '光熱費'
     from unnest(array['食費', '日用品', '光熱費', '交際費', 'その他']) with ordinality as t(name, ord);
 
   return h;

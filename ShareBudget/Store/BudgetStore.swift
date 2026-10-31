@@ -273,14 +273,14 @@ final class BudgetStore {
 
     /// 項目を保存します。category が nil なら新しく追加します。
     /// targetsByUser は「人ごとの1か月の目標金額」です。
-    func saveCategory(_ category: BudgetCategory?, name: String, targetsByUser: [UUID: Int]) async -> Bool {
+    func saveCategory(_ category: BudgetCategory?, name: String, isMonthly: Bool, targetsByUser: [UUID: Int]) async -> Bool {
         guard let client, let household else { return false }
         return await run {
             let categoryId: UUID
             if let category {
                 try await client
                     .from("categories")
-                    .update(["name": name])
+                    .update(CategoryUpdate(name: name, isMonthly: isMonthly))
                     .eq("id", value: category.id.uuidString)
                     .execute()
                 categoryId = category.id
@@ -288,7 +288,7 @@ final class BudgetStore {
                 let nextOrder = (self.categories.map(\.sortOrder).max() ?? -1) + 1
                 let created: BudgetCategory = try await client
                     .from("categories")
-                    .insert(NewCategory(householdId: household.id, name: name, sortOrder: nextOrder))
+                    .insert(NewCategory(householdId: household.id, name: name, sortOrder: nextOrder, isMonthly: isMonthly))
                     .select()
                     .single()
                     .execute()
@@ -392,11 +392,23 @@ private struct NewCategory: Encodable {
     let householdId: UUID
     let name: String
     let sortOrder: Int
+    let isMonthly: Bool
 
     enum CodingKeys: String, CodingKey {
         case name
         case householdId = "household_id"
         case sortOrder = "sort_order"
+        case isMonthly = "is_monthly"
+    }
+}
+
+private struct CategoryUpdate: Encodable {
+    let name: String
+    let isMonthly: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case name
+        case isMonthly = "is_monthly"
     }
 }
 

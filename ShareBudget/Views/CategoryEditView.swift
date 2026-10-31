@@ -9,6 +9,8 @@ struct CategoryEditView: View {
     let category: BudgetCategory?
 
     @State private var name: String
+    /// 月に1回まとめて払う項目か
+    @State private var isMonthly: Bool
     /// 人ごとの目標金額の入力欄
     @State private var targetTexts: [UUID: String] = [:]
     @State private var didLoad = false
@@ -18,6 +20,7 @@ struct CategoryEditView: View {
     init(category: BudgetCategory?) {
         self.category = category
         _name = State(initialValue: category?.name ?? "")
+        _isMonthly = State(initialValue: category?.isMonthly ?? false)
     }
 
     private var trimmedName: String {
@@ -46,6 +49,12 @@ struct CategoryEditView: View {
             }
 
             Section {
+                Toggle("月に1回まとめて払う", isOn: $isMonthly)
+            } footer: {
+                Text("家賃・光熱費・通信費など、毎月決まった日に払う項目はオンにしてください。日割りせずに計算するので、払った日の支出がオーバーになりません。")
+            }
+
+            Section {
                 ForEach(store.members) { member in
                     HStack {
                         Text(member.displayName)
@@ -69,7 +78,11 @@ struct CategoryEditView: View {
             } footer: {
                 let total = (targets ?? [:]).values.reduce(0, +)
                 let daily = DailyBudget()
-                Text("1日あたり \(daily.perDay(total).yenText)（合計 ÷ 今月の\(daily.daysInMonth)日）。この金額より使わずに済んだ分が、旅行資金になります。")
+                if isMonthly {
+                    Text("月に1回の支払いとして、日割りせずに計算します。この金額より安く済んだ分が、月末に旅行資金になります。")
+                } else {
+                    Text("1日あたり \(daily.perDay(total).yenText)（合計 ÷ 今月の\(daily.daysInMonth)日）。この金額より使わずに済んだ分が、旅行資金になります。")
+                }
             }
         }
         .navigationTitle(category == nil ? "項目の追加" : "項目の編集")
@@ -111,7 +124,7 @@ struct CategoryEditView: View {
         guard let targets else { return }
         isSaving = true
         defer { isSaving = false }
-        if await store.saveCategory(category, name: trimmedName, targetsByUser: targets) {
+        if await store.saveCategory(category, name: trimmedName, isMonthly: isMonthly, targetsByUser: targets) {
             dismiss()
         }
     }

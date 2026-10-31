@@ -140,6 +140,9 @@ struct SettingsView: View {
                             .fill(store.categoryColor(category.id))
                             .frame(width: 10, height: 10)
                         Text(category.name)
+                        if category.isMonthly {
+                            MonthlyBadge()
+                        }
                         Spacer()
                         Text(totalTarget(of: category).yenText)
                             .foregroundStyle(.secondary)

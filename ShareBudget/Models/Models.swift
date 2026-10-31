@@ -42,11 +42,32 @@ struct BudgetCategory: Codable, Identifiable {
     let householdId: UUID
     var name: String
     var sortOrder: Int
+    /// 月に1回まとめて払う項目（家賃・光熱費など）なら true。日割りの計算に入れません。
+    var isMonthly: Bool = false
 
     enum CodingKeys: String, CodingKey {
         case id, name
         case householdId = "household_id"
         case sortOrder = "sort_order"
+        case isMonthly = "is_monthly"
+    }
+
+    init(id: UUID, householdId: UUID, name: String, sortOrder: Int, isMonthly: Bool = false) {
+        self.id = id
+        self.householdId = householdId
+        self.name = name
+        self.sortOrder = sortOrder
+        self.isMonthly = isMonthly
+    }
+
+    // データベースがまだ古く is_monthly が無いときは、false として読み込みます。
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        householdId = try container.decode(UUID.self, forKey: .householdId)
+        name = try container.decode(String.self, forKey: .name)
+        sortOrder = try container.decode(Int.self, forKey: .sortOrder)
+        isMonthly = try container.decodeIfPresent(Bool.self, forKey: .isMonthly) ?? false
     }
 }
 
